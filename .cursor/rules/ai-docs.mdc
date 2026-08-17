@@ -1,0 +1,13 @@
+---
+description: Keep agent docs in sync with code
+alwaysApply: true
+---
+
+# Agent documentation
+
+This repo is documented for coding agents, not just humans.
+
+- Start from `AGENTS.md`.
+- Architecture lives in `docs/ai/architecture.md`. Scoring rules live in `docs/ai/taste-engine.md`.
+- If you change pipeline flow, scoring, resolution, API shape, or ingredient persistence (seed JSON vs Turso), update those docs in the same change.
+- Do not add UI beyond dish-name → taste profile unless the user asks.

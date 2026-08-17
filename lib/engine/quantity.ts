@@ -1,0 +1,45 @@
+const ML: Record<string, number> = {
+  ml: 1,
+  milliliter: 1,
+  millilitre: 1,
+  l: 1000,
+  liter: 1000,
+  litre: 1000,
+  tsp: 5,
+  teaspoon: 5,
+  tbsp: 15,
+  tablespoon: 15,
+  cup: 240,
+  cups: 240,
+  pint: 473,
+  quart: 946,
+  gallon: 3785,
+  oz: 30,
+  ounce: 30,
+  fl: 30,
+  "fl oz": 30,
+  lb: 454,
+  pound: 454,
+  g: 1,
+  gram: 1,
+  grams: 1,
+  kg: 1000,
+  clove: 5,
+  cloves: 5,
+  pinch: 0.3,
+  pinches: 0.3,
+  dash: 0.6,
+  handful: 30,
+  piece: 15,
+  pieces: 15,
+  slice: 10,
+  slices: 10,
+  can: 400,
+  bunch: 60,
+};
+
+export function quantityToMl(amount: number, unit: string): number {
+  const key = unit.toLowerCase().replace(/\./g, "").trim();
+  if (key === "fl oz" || key === "fluid ounce" || key === "fluid ounces") return amount * 30;
+  return amount * (ML[key] ?? 1);
+}

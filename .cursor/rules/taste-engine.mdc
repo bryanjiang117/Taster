@@ -1,0 +1,22 @@
+---
+description: Taste engine invariants for Taster
+globs: lib/engine/**/*.ts
+alwaysApply: false
+---
+
+# Taste engine
+
+Final numeric taste scores are computed in this folder. Do not generate them with an LLM.
+
+- Combine with `effective_flavor = intrinsic × (ingredient_volume / final_volume)`, then map through `toPerceptualTaste` (`TASTE_SCALE_TAU` in `taste.ts`; smaller = louder). Cap each dimension at the max ingredient vector so loudness cannot exceed the foods in the bowl.
+- Unknown ingredients: cache → composition → decomposition (depth ≤ 3) → LLM estimate. Lemon/lime are 10 sour; LLM guesses use those everyday anchors.
+- Representative recipe: ingredients in ≥ 50% of recipes; median volume share. Extract tags `in` vs `out`; only `in` scores. Out-only sides get a footnote with primary flavors, still listed quieter in Ingredients.
+- Search recipes in the origin culture’s language by default. Typed-language mode searches in the user’s query language instead; both modes share one dish cache row.
+- A recipe counts only if the live page fetch returned 2xx. URL Context may parse a JS shell after that; 4xx/5xx pages are skipped.
+- Shared dish profiles live in Turso `dishes` (running mean, `timesTasted`, last snapshot). LLM matches the query to a row; it does not invent scores.
+- Translate extracted ingredient names to English before listing or resolving. Gemini canonicalizes every name against the ingredient catalog (`canonicalizeIngredientNames(names, catalog, culinaryContext)`): one singular grocery name, reuse a catalog row when it is the same food, using the dish's cuisine/language so false friends (limón → lime in ceviche) do not collapse onto the wrong catalog row.
+- Classify the query first (dish / ingredient / reject). Ingredients use the ingredient catalog only (no recipe search). Brands and gibberish are rejected.
+- Resolve every unique listed ingredient (not only the ≥50% representative set).
+- Default model: `gemini-3.5-flash-lite`. Hard cases: `gemini-3.6-flash`. IDs in `lib/engine/models.ts`.
+- Add measured profiles in Turso (`INSERT OR IGNORE` on normalized name). Existing catalog rows are never overwritten. Unit tests may use `lib/engine/testdata/ingredients.json`; that file is not the live catalog.
+- Tests first: `lib/engine/*.test.ts`.
