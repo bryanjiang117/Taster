@@ -105,6 +105,20 @@ describe("ingredient resolution", () => {
     expect(result.taste.umami).toBe(7);
   });
 
+  it("uses mouthful taste over sugar grams when composition includes both", async () => {
+    const store = new IngredientStore();
+    const result = await resolveIngredient("orange", {
+      store,
+      lookupUnknown: async () => ({
+        kind: "composition",
+        composition: { sugarGPer100g: 9.4 },
+        taste: { sweet: 7.5, sour: 3, salty: 0, spicy: 0, umami: 0, bitter: 0.2 },
+      }),
+    });
+    expect(result.taste.sweet).toBe(7.5);
+    expect(result.taste.sour).toBe(3);
+  });
+
   it("notifies onLearned after each newly stored vector", async () => {
     const store = new IngredientStore();
     const learned: string[] = [];

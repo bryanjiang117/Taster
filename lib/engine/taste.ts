@@ -86,6 +86,43 @@ export function capTaste(taste: TasteProfile, ceiling: TasteProfile): TasteProfi
   return out;
 }
 
+/** Higher = gentler. 2 leaves a 6 next to a 7 almost untouched and sends a 2 toward 1. */
+export const TASTE_POLARIZE_POWER = 2;
+
+export function polarizeTaste(
+  taste: TasteProfile,
+  power = TASTE_POLARIZE_POWER,
+): TasteProfile {
+  if (power <= 0) return clampTaste(taste);
+  let peak = 0;
+  for (const dim of TASTE_DIMENSIONS) {
+    peak = Math.max(peak, taste[dim] ?? 0);
+  }
+  if (peak <= 0) return emptyTaste();
+  const out = emptyTaste();
+  for (const dim of TASTE_DIMENSIONS) {
+    const score = taste[dim] ?? 0;
+    if (score <= 0) continue;
+    const ratio = Math.min(1, score / peak);
+    out[dim] = score * (1 - (1 - ratio) ** power);
+  }
+  return out;
+}
+
+/** Replace any dimension the overlay actually set. Used when chemistry and mouthful taste both arrive. */
+export function overlayTaste(
+  base: TasteProfile,
+  overlay?: Partial<TasteProfile>,
+): TasteProfile {
+  if (!overlay) return clampTaste(base);
+  const out = clampTaste(base);
+  for (const dim of TASTE_DIMENSIONS) {
+    const value = overlay[dim];
+    if (value != null) out[dim] = clampScore(value);
+  }
+  return out;
+}
+
 export function roundTaste(taste: TasteProfile, digits = 1): TasteProfile {
   const out = emptyTaste();
   const p = 10 ** digits;

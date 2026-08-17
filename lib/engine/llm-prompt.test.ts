@@ -56,6 +56,28 @@ describe("ingredient lookup prompt", () => {
     expect(prompt).toMatch(/10 sour/i);
     expect(prompt.toLowerCase()).toContain("common sense");
   });
+
+  it("asks for a mouthful vector on every dimension, not chemistry-as-score", () => {
+    const prompt = ingredientLookupPrompt("parmesan");
+    expect(prompt.toLowerCase()).toContain("sweetindex");
+    expect(prompt.toLowerCase()).toContain("sourindex");
+    expect(prompt.toLowerCase()).toContain("saltyindex");
+    expect(prompt.toLowerCase()).toContain("spicyindex");
+    expect(prompt.toLowerCase()).toContain("umamiindex");
+    expect(prompt.toLowerCase()).toContain("bitterindex");
+    expect(prompt.toLowerCase()).toContain("sodium");
+    expect(prompt.toLowerCase()).toContain("glutamate");
+  });
+
+  it("anchors everyday foods so fruit, onion, and pepper match how they taste", () => {
+    const prompt = ingredientLookupPrompt("orange");
+    expect(prompt.toLowerCase()).toContain("orange");
+    expect(prompt.toLowerCase()).toContain("onion");
+    expect(prompt.toLowerCase()).toContain("black pepper");
+    expect(prompt).toMatch(/mouthful|how it tastes/i);
+    expect(prompt).toMatch(/7/);
+    expect(prompt.toLowerCase()).toContain("scoville");
+  });
 });
 
 describe("classify taste input prompt", () => {

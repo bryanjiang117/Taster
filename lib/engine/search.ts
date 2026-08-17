@@ -37,6 +37,39 @@ export function pageFetchOk(page: FetchedPage): boolean {
   return page.status >= 200 && page.status < 400;
 }
 
+const CHALLENGE_URL = /humancheck|captcha|recaptcha|hcaptcha|turnstile/i;
+
+export function pageUrlIsChallenge(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return CHALLENGE_URL.test(`${parsed.pathname}${parsed.search}`);
+  } catch {
+    return CHALLENGE_URL.test(url);
+  }
+}
+
+export function recipePageUrl(fetchedUrl: string, requestedUrl: string): string {
+  if (!pageUrlIsChallenge(fetchedUrl)) return fetchedUrl;
+  return (
+    recipeUrlFromNextParam(fetchedUrl) ??
+    (pageUrlIsChallenge(requestedUrl) ? fetchedUrl : requestedUrl)
+  );
+}
+
+function recipeUrlFromNextParam(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const next = parsed.searchParams.get("next");
+    if (!next) return null;
+    const resolved = new URL(next, parsed.origin);
+    if (resolved.origin !== parsed.origin) return null;
+    if (pageUrlIsChallenge(resolved.href)) return null;
+    return resolved.href;
+  } catch {
+    return null;
+  }
+}
+
 /** Extra HTML search is always merged so a short Gemini list is not the whole pool. */
 
 export async function searchWithFallback(

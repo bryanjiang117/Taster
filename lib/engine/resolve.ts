@@ -4,7 +4,7 @@ import { dishConfidence, sourceConfidence } from "./confidence";
 import { normalizeIngredientName } from "./normalize";
 import { applyProcessingToTaste } from "./processing";
 import { IngredientStore } from "./store";
-import { clampTaste, emptyTaste } from "./taste";
+import { clampTaste, emptyTaste, overlayTaste } from "./taste";
 import {
   MAX_RESOLUTION_DEPTH,
   type ConfidenceSource,
@@ -16,6 +16,8 @@ export type UnknownLookup =
   | {
       kind: "composition";
       composition: CompositionData;
+      /** Mouthful 0–10; wins over mapped chemistry on each set dimension. */
+      taste?: TasteProfile;
       processing?: string[];
       derivedFrom?: string[];
     }
@@ -62,7 +64,7 @@ export async function resolveIngredient(
 
   if (lookup.kind === "composition") {
     const taste = applyProcessingToTaste(
-      tasteFromComposition(lookup.composition),
+      overlayTaste(tasteFromComposition(lookup.composition), lookup.taste),
       lookup.processing ?? [],
     );
     const resolved: ResolvedIngredient = {

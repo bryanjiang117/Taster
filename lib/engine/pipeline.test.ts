@@ -1128,6 +1128,64 @@ describe("profileDish pipeline", () => {
     expect(links).toEqual([{ title: "水煮肉片", url: real }]);
   });
 
+  it("keeps the original recipe URL when fetch redirects to a captcha", async () => {
+    const recipeUrl = "https://www.xiachufang.com/recipe/103518864/";
+    const captcha =
+      "https://www.xiachufang.com/auth/humancheck_captcha/?xcf_token=abc&next=%2Frecipe%2F103518864%2F";
+    const fromUrl: string[] = [];
+    const parsed: string[] = [];
+    const links: Array<{ title: string; url: string }> = [];
+    await profileDish("mapo tofu", {
+      llm: {
+        ...mapoLlm((url) =>
+          mapoRecipe(url, [
+            { name: "soy sauce", volumeMl: 30 },
+            { name: "tofu", volumeMl: 300 },
+            { name: "pork", volumeMl: 100 },
+            { name: "chili", volumeMl: 20 },
+          ]),
+        ),
+        extractRecipe: async (_text, url) => {
+          parsed.push(url);
+          return mapoRecipe(url, [
+            { name: "invented sugar", volumeMl: 80 },
+            { name: "invented cream", volumeMl: 120 },
+          ]);
+        },
+        extractRecipeFromUrl: async (url) => {
+          fromUrl.push(url);
+          return mapoRecipe(url, [
+            { name: "soy sauce", volumeMl: 30 },
+            { name: "tofu", volumeMl: 300 },
+            { name: "pork", volumeMl: 100 },
+            { name: "chili", volumeMl: 20 },
+          ]);
+        },
+      },
+      search: {
+        search: async () => [{ title: "麻婆豆腐", url: recipeUrl, snippet: "" }],
+      },
+      pages: {
+        fetchText: async () => ({
+          text: longPageText(),
+          url: captcha,
+          status: 200,
+        }),
+      },
+      store: loadSeedStore(),
+      recipeLimit: 1,
+      onProgress: (event) => {
+        if (event.type === "ingredients") {
+          const tofu = event.items.find((item) => item.name === "tofu");
+          if (tofu) links.splice(0, links.length, ...tofu.recipes);
+        }
+      },
+    });
+    expect(parsed).toEqual([]);
+    expect(fromUrl).toEqual([recipeUrl]);
+    expect(links).toEqual([{ title: "麻婆豆腐", url: recipeUrl }]);
+  });
+
   it("does not count a page that failed to load even if URL context returns a recipe", async () => {
     const fromUrl: string[] = [];
     const links: string[] = [];

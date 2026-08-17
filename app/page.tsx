@@ -122,7 +122,10 @@ export default function HomePage() {
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (loading) return;
+    if (loading) {
+      stopTasting();
+      return;
+    }
     void startTaste();
   }
 
@@ -252,9 +255,8 @@ export default function HomePage() {
         </fieldset>
         <button
           className={loading ? "taste stop" : "taste"}
-          type={loading ? "button" : "submit"}
+          type="submit"
           disabled={!loading && !dish.trim()}
-          onClick={loading ? stopTasting : undefined}
         >
           {loading ? "Stop" : "Taste"}
         </button>
@@ -302,10 +304,46 @@ export default function HomePage() {
               : ""}
             {result.fromCache ? " · cached average" : ""}
           </p>
-          {result.footnote ? <p className="footnote">{result.footnote}</p> : null}
+          <AccompanimentFootnote
+            items={ingredients}
+            fallback={result.footnote}
+          />
         </section>
       ) : null}
     </main>
+  );
+}
+
+function AccompanimentFootnote({
+  items,
+  fallback,
+}: {
+  items: FoundIngredient[];
+  fallback?: string | null;
+}) {
+  const sides = items.filter((item) => item.out);
+  if (sides.length === 0) {
+    return fallback ? <p className="footnote">{fallback}</p> : null;
+  }
+
+  return (
+    <div className="footnote">
+      <p className="footnote-label">Often served with</p>
+      <ul>
+        {sides.map((item) => (
+          <li key={item.name}>
+            <span>{item.name}</span>
+            <span className="footnote-flavors">
+              {item.pending
+                ? "tasting…"
+                : item.flavors.length
+                  ? item.flavors.join(" · ")
+                  : "neutral"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

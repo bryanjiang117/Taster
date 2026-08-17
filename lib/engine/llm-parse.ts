@@ -42,6 +42,7 @@ export function lookupFromModelJson(data: IngredientLookupJson): UnknownLookup {
     return {
       kind: "composition",
       composition: data.composition,
+      taste: data.taste,
       processing: data.processing,
     };
   }

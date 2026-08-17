@@ -1,5 +1,5 @@
 import { clampTaste, emptyTaste } from "./taste";
-import type { TasteProfile } from "./types";
+import { TASTE_DIMENSIONS, type TasteDimension, type TasteProfile } from "./types";
 
 export type CompositionData = {
   sodiumMgPer100g?: number;
@@ -7,37 +7,73 @@ export type CompositionData = {
   pH?: number;
   glutamateMgPer100g?: number;
   scoville?: number;
+  sweetIndex?: number;
+  sourIndex?: number;
+  saltyIndex?: number;
+  spicyIndex?: number;
+  umamiIndex?: number;
   bitterIndex?: number;
 };
+
+/**
+ * Amount that maps to ~6.3/10 on the 1-exp curve.
+ * Everyday foods land like a mouthful; concentrates saturate at 10.
+ */
+export const COMPOSITION_TASTE_TAU = {
+  sweet: 7.5, // g sugar / 100g
+  salty: 1400, // mg sodium / 100g
+  umami: 300, // mg glutamate / 100g
+} as const;
+
+const INDEX_KEY = {
+  sweet: "sweetIndex",
+  sour: "sourIndex",
+  salty: "saltyIndex",
+  spicy: "spicyIndex",
+  umami: "umamiIndex",
+  bitter: "bitterIndex",
+} as const satisfies Record<TasteDimension, keyof CompositionData>;
+
+function perceptualFromAmount(amount: number, tau: number): number {
+  if (amount <= 0 || tau <= 0) return 0;
+  return 10 * (1 - Math.exp(-amount / tau));
+}
+
+function sourFromPh(pH: number): number {
+  const sourPhNeutral = 5.5;
+  const sourPhMax = 2.3;
+  if (pH >= sourPhNeutral) return 0;
+  return ((sourPhNeutral - pH) / (sourPhNeutral - sourPhMax)) * 10;
+}
+
+function spicyFromScoville(scoville: number): number {
+  const num = Math.log10(1 + scoville);
+  const den = Math.log10(1 + 1_000_000);
+  return (num / den) * 10;
+}
 
 export function tasteFromComposition(data: CompositionData): TasteProfile {
   const taste = emptyTaste();
 
-  if (data.sodiumMgPer100g != null) {
-    taste.salty = (data.sodiumMgPer100g / 4000) * 10;
-  }
   if (data.sugarGPer100g != null) {
-    taste.sweet = (data.sugarGPer100g / 80) * 10;
+    taste.sweet = perceptualFromAmount(data.sugarGPer100g, COMPOSITION_TASTE_TAU.sweet);
   }
   if (data.pH != null) {
-    // Typical foods sit at pH 5–6.5 without tasting sour. Map only below that.
-    const sourPhNeutral = 5.5;
-    const sourPhMax = 2.3;
-    taste.sour =
-      data.pH >= sourPhNeutral
-        ? 0
-        : ((sourPhNeutral - data.pH) / (sourPhNeutral - sourPhMax)) * 10;
+    taste.sour = sourFromPh(data.pH);
   }
-  if (data.glutamateMgPer100g != null) {
-    taste.umami = (data.glutamateMgPer100g / 1500) * 10;
+  if (data.sodiumMgPer100g != null) {
+    taste.salty = perceptualFromAmount(data.sodiumMgPer100g, COMPOSITION_TASTE_TAU.salty);
   }
   if (data.scoville != null) {
-    const num = Math.log10(1 + data.scoville);
-    const den = Math.log10(1 + 1_000_000);
-    taste.spicy = (num / den) * 10;
+    taste.spicy = spicyFromScoville(data.scoville);
   }
-  if (data.bitterIndex != null) {
-    taste.bitter = data.bitterIndex;
+  if (data.glutamateMgPer100g != null) {
+    taste.umami = perceptualFromAmount(data.glutamateMgPer100g, COMPOSITION_TASTE_TAU.umami);
+  }
+
+  for (const dim of TASTE_DIMENSIONS) {
+    const index = data[INDEX_KEY[dim]];
+    if (typeof index === "number") taste[dim] = index;
   }
 
   return clampTaste(taste);

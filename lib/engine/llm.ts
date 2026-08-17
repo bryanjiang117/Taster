@@ -142,16 +142,19 @@ URL: ${sourceUrl}`;
 
 export function ingredientLookupPrompt(name: string): string {
   return `Resolve culinary ingredient "${name}".
-Prefer composition data (sodium, sugar, pH, glutamate, scoville).
-Only include pH when the food is perceptibly acidic (citrus, vinegar, tomato, yogurt). Typical spice/meat/vegetable pH 5–6.5 is not sour — omit pH then.
-If unavailable, decompose into typical recipe parts with volumeMl totaling 100.
-Last resort: estimate taste 0-10 on sweet,sour,salty,spicy,umami,bitter.
-Use culinary common sense. 10 is the everyday ceiling, not a theoretical lab acid: 10 sour = lemon or lime (juice), 10 salty = table salt, 10 sweet = sugar, 10 spicy = habanero-class heat, 10 umami = fish sauce. Do not hedge — if it tastes like the reference, score 10. Lemon and lime are not 8 or 9. Milder acids (tomato, yogurt, tamarind pulp) sit lower. Rice vinegar is milder than lemon; distilled vinegar can match it.
+The stored 0-10 vector is how a mouthful of this food tastes, not milligrams, grams, pH, or SHU.
+Always include taste (sweet,sour,salty,spicy,umami,bitter) as that mouthful profile. Use culinary common sense.
+Also set sweetIndex, sourIndex, saltyIndex, spicyIndex, umamiIndex, bitterIndex to the same perceived 0-10. Indexes override every chemistry map (sugar, sodium, pH, glutamate, scoville).
+Prefer composition numbers only as evidence, and only when they match what you taste. Do not treat grams of sugar, mg of sodium, mg of glutamate, or scoville as the score. Do not use scoville except for chili/capsaicin heat (not black pepper, white pepper, ginger, or wasabi). Only include pH when the food is perceptibly acidic (citrus, vinegar, tomato, yogurt). Typical spice/meat/vegetable pH 5–6.5 is not sour — omit pH then.
+If composition is a poor fit, decompose into typical recipe parts with volumeMl totaling 100.
+Last resort: estimate taste only.
+Anchors — 10 is the everyday ceiling: 10 sour = lemon or lime (juice), 10 salty = table salt, 10 sweet = sugar, 10 spicy = habanero, 10 umami = fish sauce, 10 bitter = unsweetened espresso. Do not hedge: lemon and lime are 10 sour, not 8 or 9.
+Calibration: orange ≈ 7–8 sweet (mild sour); onion ≈ 0–1 sweet (pungent, barely sweet); tomato ≈ 2–3 sweet, 4–5 umami, 3–5 sour; parmesan ≈ 6–7 salty, high umami; black pepper ≈ 2–3 spicy; jalapeño ≈ 5–6 spicy. Milder acids (tomato, yogurt, tamarind pulp) sit lower. Rice vinegar is milder than lemon; distilled vinegar can match it.
 Do not output a finished dish taste profile.`;
 }
 
 export const SYSTEM =
-  "You extract structured culinary data as JSON. Never invent a dish's final taste scores. Search native-language recipes for authentic versions, or the user's typed language for internationalized versions, as the task specifies. Prefer measurable composition or ingredient decomposition over guessing taste numbers.";
+  "You extract structured culinary data as JSON. Never invent a dish's final taste scores. Search native-language recipes for authentic versions, or the user's typed language for internationalized versions, as the task specifies. Ingredient 0-10 vectors are how a mouthful tastes; composition chemistry is evidence and must not replace that perception.";
 
 export function geminiJsonRequest(
   model: string,
@@ -294,6 +297,11 @@ const INGREDIENT_SCHEMA = {
         pH: { type: "number" },
         glutamateMgPer100g: { type: "number" },
         scoville: { type: "number" },
+        sweetIndex: { type: "number" },
+        sourIndex: { type: "number" },
+        saltyIndex: { type: "number" },
+        spicyIndex: { type: "number" },
+        umamiIndex: { type: "number" },
         bitterIndex: { type: "number" },
       },
     },

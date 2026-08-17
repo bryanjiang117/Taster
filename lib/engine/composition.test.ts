@@ -14,6 +14,45 @@ describe("composition → taste mapping", () => {
     expect(water.sweet).toBe(0);
   });
 
+  it("maps fruit-level sugar to a sweet food, not a dilute syrup", () => {
+    const orange = tasteFromComposition({ sugarGPer100g: 9.4 });
+    expect(orange.sweet).toBeGreaterThanOrEqual(7);
+    expect(orange.sweet).toBeLessThan(9);
+  });
+
+  it("maps everyday sodium and glutamate like eating the food, not a fraction of salt or kombu", () => {
+    const parmesan = tasteFromComposition({ sodiumMgPer100g: 1500 });
+    expect(parmesan.salty).toBeGreaterThanOrEqual(6);
+    expect(parmesan.salty).toBeLessThan(9);
+    const tomato = tasteFromComposition({ glutamateMgPer100g: 200 });
+    expect(tomato.umami).toBeGreaterThanOrEqual(4);
+    expect(tomato.umami).toBeLessThan(7);
+  });
+
+  it("lets a perceived index override chemistry on every dimension", () => {
+    const taste = tasteFromComposition({
+      sugarGPer100g: 5,
+      sodiumMgPer100g: 1500,
+      pH: 2.3,
+      glutamateMgPer100g: 1600,
+      scoville: 10_000,
+      sweetIndex: 0.5,
+      sourIndex: 2,
+      saltyIndex: 1,
+      spicyIndex: 2.5,
+      umamiIndex: 3,
+      bitterIndex: 4,
+    });
+    expect(taste).toEqual({
+      sweet: 0.5,
+      sour: 2,
+      salty: 1,
+      spicy: 2.5,
+      umami: 3,
+      bitter: 4,
+    });
+  });
+
   it("maps low pH to sourness", () => {
     const lemon = tasteFromComposition({ pH: 2.3 });
     expect(lemon.sour).toBeGreaterThan(8);

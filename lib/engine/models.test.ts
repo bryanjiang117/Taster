@@ -77,6 +77,17 @@ describe("Gemini JSON mapping", () => {
     ).toBe("llm");
   });
 
+  it("keeps a mouthful taste overlay on composition lookups", () => {
+    const lookup = lookupFromModelJson({
+      strategy: "composition",
+      composition: { sugarGPer100g: 9.4 },
+      taste: { sweet: 7.5, sour: 3, salty: 0, spicy: 0, umami: 0, bitter: 0 },
+    });
+    expect(lookup.kind).toBe("composition");
+    if (lookup.kind !== "composition") return;
+    expect(lookup.taste?.sweet).toBe(7.5);
+  });
+
   it("returns null when a page has no ingredients", () => {
     expect(recipeFromExtractJson({ ingredients: [] }, "https://x.test")).toBeNull();
   });

@@ -40,13 +40,20 @@ import {
   type TasteInputClassification,
 } from "./llm";
 import type { PageClient, SearchClient, SearchHit } from "./search";
-import { asFetchedPage, pageFetchOk, pageTextIsTrusted } from "./search";
+import {
+  asFetchedPage,
+  pageFetchOk,
+  pageTextIsTrusted,
+  pageUrlIsChallenge,
+  recipePageUrl,
+} from "./search";
 import { loadProductionStore } from "./catalog";
 import { IngredientStore } from "./store";
 import {
   capTaste,
   ceilingTaste,
   clampTaste,
+  polarizeTaste,
   roundTaste,
   toPerceptualTaste,
   TASTE_DIMENSIONS,
@@ -253,10 +260,11 @@ export async function profileDish(
         representative.volumeInfo.solubleRetention,
       );
       const perceptual = toPerceptualTaste(scored);
-      return capTaste(
+      const capped = capTaste(
         perceptual,
         ceilingTaste(resolved.map((ingredient) => ingredient.taste)),
       );
+      return polarizeTaste(capped);
     },
     deps.signal,
   );
@@ -599,10 +607,11 @@ async function extractOneRecipe(
     return null;
   }
   if (!pageFetchOk(fetched)) return null;
-  pageUrl = fetched.url;
+  const challenge = pageUrlIsChallenge(fetched.url);
+  pageUrl = recipePageUrl(fetched.url, hit.url);
 
   try {
-    if (pageTextIsTrusted(fetched.text)) {
+    if (!challenge && pageTextIsTrusted(fetched.text)) {
       const recipe = await runLoggedStep(
         deps.onProgress,
         `parse:${hit.url}`,

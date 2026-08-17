@@ -186,7 +186,7 @@
   {
     "ingredient": "onion",
     "taste": {
-      "sweet": 3,
+      "sweet": 0.5,
       "sour": 0.5,
       "salty": 0,
       "spicy": 1,
@@ -486,7 +486,7 @@
       "sweet": 0,
       "sour": 0,
       "salty": 0,
-      "spicy": 4,
+      "spicy": 2.5,
       "umami": 0,
       "bitter": 2
     },

@@ -5,6 +5,8 @@ import {
   htmlToPageText,
   pageFetchOk,
   pageTextIsTrusted,
+  pageUrlIsChallenge,
+  recipePageUrl,
   searchWithFallback,
   type SearchHit,
 } from "./search";
@@ -138,6 +140,51 @@ describe("pageFetchOk", () => {
         status: 500,
       }),
     ).toBe(false);
+  });
+});
+
+describe("pageUrlIsChallenge", () => {
+  it("detects Xiachufang human-check redirects", () => {
+    expect(
+      pageUrlIsChallenge(
+        "https://www.xiachufang.com/auth/humancheck_captcha/?xcf_token=abc&next=%2Frecipe%2F103518864%2F",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not treat a normal recipe URL as a challenge", () => {
+    expect(
+      pageUrlIsChallenge("https://www.xiachufang.com/recipe/103518864/"),
+    ).toBe(false);
+  });
+});
+
+describe("recipePageUrl", () => {
+  it("recovers the recipe path from a captcha next= redirect", () => {
+    expect(
+      recipePageUrl(
+        "https://www.xiachufang.com/auth/humancheck_captcha/?xcf_token=abc&next=%2Frecipe%2F103518864%2F",
+        "https://www.xiachufang.com/recipe/103518864/",
+      ),
+    ).toBe("https://www.xiachufang.com/recipe/103518864/");
+  });
+
+  it("falls back to the requested URL when the captcha has no next=", () => {
+    expect(
+      recipePageUrl(
+        "https://www.xiachufang.com/auth/humancheck_captcha/?xcf_token=abc",
+        "https://www.xiachufang.com/recipe/106155695/",
+      ),
+    ).toBe("https://www.xiachufang.com/recipe/106155695/");
+  });
+
+  it("keeps a real post-redirect recipe URL", () => {
+    expect(
+      recipePageUrl(
+        "https://www.xiachufang.com/recipe/mapo",
+        "https://vertexaisearch.cloud.google.com/grounding-api-redirect/abc",
+      ),
+    ).toBe("https://www.xiachufang.com/recipe/mapo");
   });
 });
 

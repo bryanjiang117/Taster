@@ -8,11 +8,11 @@ alwaysApply: false
 
 Final numeric taste scores are computed in this folder. Do not generate them with an LLM.
 
-- Combine with `effective_flavor = intrinsic × (ingredient_volume / final_volume)`, then map through `toPerceptualTaste` (`TASTE_SCALE_TAU` in `taste.ts`; smaller = louder). Cap each dimension at the max ingredient vector so loudness cannot exceed the foods in the bowl.
-- Unknown ingredients: cache → composition → decomposition (depth ≤ 3) → LLM estimate. Lemon/lime are 10 sour; LLM guesses use those everyday anchors.
-- Representative recipe: ingredients in ≥ 50% of recipes; median volume share. Extract tags `in` vs `out`; only `in` scores. Out-only sides get a footnote with primary flavors, still listed quieter in Ingredients.
+- Combine with `effective_flavor = intrinsic × (ingredient_volume / final_volume)`, then map through `toPerceptualTaste` (`TASTE_SCALE_TAU` in `taste.ts`; smaller = louder). Cap each dimension at the max ingredient vector so loudness cannot exceed the foods in the bowl. Then `polarizeTaste` (`TASTE_POLARIZE_POWER`) so each score is scaled by how close it is to the loudest of the 6 — a 6 next to a 7 barely moves; a 2 next to a 7 becomes ~1.
+- Unknown ingredients: cache → composition → decomposition (depth ≤ 3) → LLM estimate. Catalog 0–10 is a mouthful, not mg/grams/SHU. Sugar, sodium, and glutamate use a perceptual curve; a `*Index` on every dimension and a returned `taste` overlay win over chemistry. Lemon/lime are 10 sour; orange ≈ 7–8 sweet, onion ≈ 0–1 sweet, black pepper ≈ 2–3 spicy, parmesan ≈ 6–7 salty.
+- Representative recipe: ingredients in ≥ 50% of recipes; median volume share. Extract tags `in` vs `out`; only `in` scores. Out-only sides get an “Often served with” list under the scores (primary flavors), still listed quieter in Ingredients.
 - Search recipes in the origin culture’s language by default. Typed-language mode searches in the user’s query language instead; both modes share one dish cache row.
-- A recipe counts only if the live page fetch returned 2xx. URL Context may parse a JS shell after that; 4xx/5xx pages are skipped.
+- A recipe counts only if the live page fetch returned 2xx. URL Context may parse a JS shell after that; 4xx/5xx pages are skipped. Captcha/human-check redirects still count as 2xx; URL Context and stored links use the pre-challenge recipe URL, not the challenge page.
 - Shared dish profiles live in Turso `dishes` (running mean, `timesTasted`, last snapshot). LLM matches the query to a row; it does not invent scores.
 - Translate extracted ingredient names to English before listing or resolving. Gemini canonicalizes every name against the ingredient catalog (`canonicalizeIngredientNames(names, catalog, culinaryContext)`): one singular grocery name, reuse a catalog row when it is the same food, using the dish's cuisine/language so false friends (limón → lime in ceviche) do not collapse onto the wrong catalog row.
 - Classify the query first (dish / ingredient / reject). Ingredients use the ingredient catalog only (no recipe search). Brands and gibberish are rejected.
