@@ -4,18 +4,25 @@ import { useEffect, useState } from "react";
 import {
   delayForPhase,
   DISH_PLACEHOLDERS,
+  shufflePhrases,
   stepTypewriter,
   type TypewriterState,
   typewriterText,
 } from "@/lib/ui/typewriter-placeholder";
 
-function heldPhrase(index: number): TypewriterState {
-  const phrase = DISH_PLACEHOLDERS[index] ?? "";
+function heldPhrase(
+  phrases: readonly string[],
+  index: number,
+): TypewriterState {
+  const phrase = phrases[index] ?? "";
   return { index, length: phrase.length, phase: "hold" };
 }
 
 export function useDishPlaceholder(active: boolean): string {
-  const [state, setState] = useState<TypewriterState>(() => heldPhrase(0));
+  const [phrases] = useState(() => shufflePhrases(DISH_PLACEHOLDERS));
+  const [state, setState] = useState<TypewriterState>(() =>
+    heldPhrase(phrases, 0),
+  );
   const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
@@ -28,9 +35,9 @@ export function useDishPlaceholder(active: boolean): string {
 
   useEffect(() => {
     if (!active) {
-      setState((current) => heldPhrase(current.index));
+      setState((current) => heldPhrase(phrases, current.index));
     }
-  }, [active]);
+  }, [active, phrases]);
 
   useEffect(() => {
     if (!active) return;
@@ -39,19 +46,19 @@ export function useDishPlaceholder(active: boolean): string {
     const timer = window.setTimeout(() => {
       setState((current) => {
         if (reduced) {
-          const next = (current.index + 1) % DISH_PLACEHOLDERS.length;
-          return heldPhrase(next);
+          const next = (current.index + 1) % phrases.length;
+          return heldPhrase(phrases, next);
         }
-        return stepTypewriter(current, DISH_PLACEHOLDERS);
+        return stepTypewriter(current, phrases);
       });
     }, delay);
 
     return () => window.clearTimeout(timer);
-  }, [active, reduced, state]);
+  }, [active, phrases, reduced, state]);
 
   if (!active) {
-    return DISH_PLACEHOLDERS[state.index] ?? "";
+    return phrases[state.index] ?? "";
   }
 
-  return typewriterText(state, DISH_PLACEHOLDERS);
+  return typewriterText(state, phrases);
 }

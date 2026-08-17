@@ -32,10 +32,9 @@ export default function HomePage() {
   const [steps, setSteps] = useState<ProgressStepEvent[]>([]);
   const [ingredients, setIngredients] = useState<FoundIngredient[]>([]);
   const [totalMs, setTotalMs] = useState<number | null>(null);
-  const [focused, setFocused] = useState(false);
   const [useCache, setUseCache] = useState(false);
   const [typedLanguage, setTypedLanguage] = useState(false);
-  const placeholder = useDishPlaceholder(!focused && !dish && !loading);
+  const placeholder = useDishPlaceholder(!dish && !loading);
   const abortRef = useRef<AbortController | null>(null);
   const dishInputRef = useRef<HTMLInputElement | null>(null);
   const sheetRef = useRef<HTMLElement | null>(null);
@@ -223,8 +222,6 @@ export default function HomePage() {
             name="dish"
             value={dish}
             onChange={(event) => setDish(event.target.value)}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
             placeholder={placeholder}
             autoComplete="off"
             autoFocus

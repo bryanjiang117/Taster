@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   delayForPhase,
+  DISH_PLACEHOLDERS,
+  shufflePhrases,
   startTypewriter,
   stepTypewriter,
   typewriterText,
@@ -62,5 +64,21 @@ describe("delayForPhase", () => {
     expect(delayForPhase("hold")).toBeGreaterThan(delayForPhase("type"));
     expect(delayForPhase("hold")).toBeGreaterThan(delayForPhase("delete"));
     expect(delayForPhase("delete")).toBeLessThan(delayForPhase("type"));
+  });
+});
+
+describe("shufflePhrases", () => {
+  it("keeps every phrase exactly once", () => {
+    const shuffled = shufflePhrases(DISH_PLACEHOLDERS, () => 0.42);
+    expect(shuffled).toHaveLength(DISH_PLACEHOLDERS.length);
+    expect(new Set(shuffled).size).toBe(DISH_PLACEHOLDERS.length);
+    expect([...shuffled].sort()).toEqual([...DISH_PLACEHOLDERS].sort());
+  });
+
+  it("can put a later phrase first", () => {
+    // random() === 0 always picks j = 0, so the last item moves forward.
+    const shuffled = shufflePhrases(["a", "b", "c"], () => 0);
+    expect(shuffled[0]).not.toBe("a");
+    expect(shuffled).toEqual(["b", "c", "a"]);
   });
 });
