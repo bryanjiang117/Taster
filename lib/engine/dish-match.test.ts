@@ -44,4 +44,42 @@ describe("recipeMatchesDish", () => {
       }, { dish: "nam ngiaw", nativeName: "น้ำเงี้ยว" }),
     ).toBe(true);
   });
+
+  it("does not veto an English extracted title when the search hit already has the native name", () => {
+    expect(
+      recipeMatchesDish("Sichuan boiled beef", {
+        title: "水煮肉片的做法",
+        snippet: "",
+        url: "https://example.com/shuizhu",
+      }, { dish: "shuizhurou", nativeName: "水煮肉片" }),
+    ).toBe(true);
+  });
+
+  it("keeps a shorter native title of the same dish", () => {
+    expect(
+      recipeMatchesDish("水煮肉", {
+        title: "水煮肉片",
+        snippet: "",
+        url: "https://example.com/shuizhu",
+      }, { dish: "shuizhurou", nativeName: "水煮肉片" }),
+    ).toBe(true);
+  });
+
+  it("rejects an extract whose native title is a different dish even when the search hit matched", () => {
+    const shuizhu = { dish: "shuizhurou", nativeName: "水煮肉片" };
+    expect(
+      recipeMatchesDish("鱼香茄子", {
+        title: "水煮肉片的做法",
+        snippet: "",
+        url: "https://example.com/shuizhu",
+      }, shuizhu),
+    ).toBe(false);
+    expect(
+      recipeMatchesDish("宫保鸡丁", {
+        title: "水煮肉片",
+        snippet: "",
+        url: "https://xiachufang.com/recipe/123",
+      }, shuizhu),
+    ).toBe(false);
+  });
 });

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   delayForPhase,
   DISH_PLACEHOLDERS,
-  shufflePhrases,
+  shuffleRest,
   stepTypewriter,
   type TypewriterState,
   typewriterText,
@@ -19,11 +19,15 @@ function heldPhrase(
 }
 
 export function useDishPlaceholder(active: boolean): string {
-  const [phrases] = useState(() => shufflePhrases(DISH_PLACEHOLDERS));
+  const [phrases, setPhrases] = useState<readonly string[]>(DISH_PLACEHOLDERS);
   const [state, setState] = useState<TypewriterState>(() =>
-    heldPhrase(phrases, 0),
+    heldPhrase(DISH_PLACEHOLDERS, 0),
   );
   const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    setPhrases(shuffleRest(DISH_PLACEHOLDERS));
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");

@@ -12,7 +12,7 @@ input
     → if Reuse cache is on and matched: return stored average + last snapshot; timesTasted += 1
     → else Gemini Flash-Lite: origin + search queries (native = authentic, typed language = internationalized)
     → Google Search grounding + HTML search in parallel (stop once 3 titled hits exist)
-    → fetch page HTML in parallel → parse JSON if the page text is trusted (JSON-LD or long body); URL Context only after a 2xx fetch when HTML is too thin; skip 4xx/5xx URLs
+    → fetch page HTML in parallel → parse JSON if the page text is trusted (JSON-LD or long body); URL Context only after a 2xx fetch when HTML is too thin, using the post-redirect page URL (not the Gemini grounding redirect); skip 4xx/5xx URLs; drop extracts whose native-script title is a different dish even if the search hit matched
     → rewrite each ingredient to a singular grocery name using dish cuisine/language (not dictionary English) and map onto the ingredient catalog
     → each extract tags ingredient role in|out (side/serving = out); resolve all names for flavors
     → representative recipe (≥50% of in-dish appearances, median volume share; out-only never scored)

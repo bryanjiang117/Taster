@@ -741,6 +741,70 @@ describe("profileDish pipeline", () => {
     expect(result.recipesAnalyzed).toBe(3);
   });
 
+  it("skips an extract that names a different dish even when the search hit matched", async () => {
+    const names: string[][] = [];
+    await profileDish("shuizhurou", {
+      llm: {
+        identifyDish: async (dish) => ({
+          dish,
+          country: "China",
+          culture: "Sichuan",
+          nativeName: "水煮肉片",
+          language: "Chinese",
+          languageCode: "zh",
+          searchQueries: ["水煮肉片 做法"],
+        }),
+        extractRecipe: async () => null,
+        extractRecipeFromUrl: async (url) => {
+          if (url.includes("wrong")) {
+            return {
+              title: "宫保鸡丁",
+              url,
+              ingredients: [
+                { name: "chicken", volumeMl: 300 },
+                { name: "peanut", volumeMl: 40 },
+                { name: "chili", volumeMl: 20 },
+              ],
+            };
+          }
+          return {
+            title: "水煮肉片",
+            url,
+            ingredients: [
+              { name: "beef", volumeMl: 300 },
+              { name: "chili bean paste", volumeMl: 30 },
+              { name: "sichuan pepper", volumeMl: 5 },
+            ],
+          };
+        },
+        lookupIngredient: async () => ({
+          kind: "llm",
+          taste: { sweet: 0, sour: 0, salty: 0, spicy: 0, umami: 0, bitter: 0 },
+        }),
+      },
+      search: {
+        search: async () => [
+          { title: "水煮肉片", url: "https://example.com/wrong", snippet: "" },
+          { title: "水煮肉片", url: "https://example.com/shuizhu-1", snippet: "" },
+          { title: "水煮肉片", url: "https://example.com/shuizhu-2", snippet: "" },
+          { title: "水煮肉片", url: "https://example.com/shuizhu-3", snippet: "" },
+        ],
+      },
+      pages: { fetchText: async () => "" },
+      store: loadSeedStore(),
+      onProgress: (event) => {
+        if (event.type === "ingredients") {
+          names.push(event.items.map((item) => item.name));
+        }
+      },
+    });
+
+    expect(names.at(-1)).toEqual(
+      expect.arrayContaining(["beef", "chili bean paste", "sichuan pepper"]),
+    );
+    expect(names.at(-1)?.join(" ")).not.toMatch(/chicken|peanut/);
+  });
+
   it("scores native-language recipes instead of returning an all-zero profile", async () => {
     const result = await profileDish("mapo tofu", {
       llm: {
@@ -994,6 +1058,74 @@ describe("profileDish pipeline", () => {
     });
     expect(parsed).toEqual([]);
     expect(fromUrl).toEqual(["https://example.com/mapo-1"]);
+  });
+
+  it("reads URL context from the redirected page, not the spent grounding URL", async () => {
+    const grounding =
+      "https://vertexaisearch.cloud.google.com/grounding-api-redirect/abc";
+    const real = "https://www.xiachufang.com/recipe/shuizhu";
+    const fromUrl: string[] = [];
+    const links: Array<{ title: string; url: string }> = [];
+    await profileDish("shuizhurou", {
+      llm: {
+        identifyDish: async (dish) => ({
+          dish,
+          country: "China",
+          culture: "Sichuan",
+          nativeName: "水煮肉片",
+          language: "Chinese",
+          languageCode: "zh",
+          searchQueries: ["水煮肉片 做法"],
+        }),
+        extractRecipe: async () => null,
+        extractRecipeFromUrl: async (url) => {
+          fromUrl.push(url);
+          if (url === grounding) {
+            return {
+              title: "宫保鸡丁",
+              url,
+              ingredients: [
+                { name: "chicken", volumeMl: 300 },
+                { name: "peanut", volumeMl: 40 },
+                { name: "chili", volumeMl: 20 },
+              ],
+            };
+          }
+          return {
+            title: "水煮肉片",
+            url,
+            ingredients: [
+              { name: "beef", volumeMl: 300 },
+              { name: "chili bean paste", volumeMl: 30 },
+              { name: "sichuan pepper", volumeMl: 5 },
+            ],
+          };
+        },
+        lookupIngredient: async () => ({
+          kind: "llm",
+          taste: { sweet: 0, sour: 0, salty: 0, spicy: 0, umami: 0, bitter: 0 },
+        }),
+      },
+      search: {
+        search: async () => [{ title: "水煮肉片", url: grounding, snippet: "" }],
+      },
+      pages: {
+        fetchText: async () => ({
+          text: "Enable JavaScript to view this recipe.",
+          url: real,
+        }),
+      },
+      store: loadSeedStore(),
+      recipeLimit: 1,
+      onProgress: (event) => {
+        if (event.type === "ingredients") {
+          const beef = event.items.find((item) => item.name === "beef");
+          if (beef) links.splice(0, links.length, ...beef.recipes);
+        }
+      },
+    });
+    expect(fromUrl).toEqual([real]);
+    expect(links).toEqual([{ title: "水煮肉片", url: real }]);
   });
 
   it("does not count a page that failed to load even if URL context returns a recipe", async () => {

@@ -630,7 +630,7 @@ async function extractOneRecipe(
         deps.onProgress,
         `url:${hit.url}`,
         `Reading recipe via URL context: ${label}`,
-        () => deps.llm.extractRecipeFromUrl!(hit.url, culinary),
+        () => deps.llm.extractRecipeFromUrl!(pageUrl, culinary),
         deps.signal,
       );
       best = richerRecipe(best, fromUrl);
