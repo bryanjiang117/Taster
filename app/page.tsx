@@ -130,6 +130,7 @@ export default function HomePage() {
     if (abortRef.current) return;
     const abort = new AbortController();
     abortRef.current = abort;
+    const started = Date.now();
     setError(null);
     setResult(null);
     setSteps([]);
@@ -178,6 +179,7 @@ export default function HomePage() {
       );
       if (abort.signal.aborted) return;
       if (outcome === "incomplete") {
+        setTotalMs(Date.now() - started);
         setSteps((current) => finishRunningSteps(current));
         setError("Taste timed out before finishing. Try again.");
       }

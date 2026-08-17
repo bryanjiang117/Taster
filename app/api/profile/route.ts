@@ -8,7 +8,7 @@ import { DuckDuckGoSearch, FetchPageClient, searchWithFallback } from "@/lib/eng
 
 export const dynamic = "force-dynamic";
 /** Pho-scale runs (recipe collect ≤30s + many unknown ingredient LLM lookups) exceed 60s on Vercel. */
-export const maxDuration = 300;
+export const maxDuration = 600;
 
 const KEEPALIVE_MS = 15_000;
 
