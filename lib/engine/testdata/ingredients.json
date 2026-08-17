@@ -1,0 +1,1397 @@
+[
+  {
+    "ingredient": "salt",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 10,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured"
+  },
+  {
+    "ingredient": "sugar",
+    "taste": {
+      "sweet": 10,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured"
+  },
+  {
+    "ingredient": "water",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured"
+  },
+  {
+    "ingredient": "soy sauce",
+    "taste": {
+      "sweet": 1,
+      "sour": 0.5,
+      "salty": 9,
+      "spicy": 0,
+      "umami": 8,
+      "bitter": 0
+    },
+    "derivedFrom": [
+      "soybeans",
+      "wheat",
+      "salt",
+      "water"
+    ],
+    "processing": [
+      "fermentation"
+    ],
+    "confidence": 0.91,
+    "source": "measured"
+  },
+  {
+    "ingredient": "fish sauce",
+    "taste": {
+      "sweet": 1,
+      "sour": 1,
+      "salty": 9,
+      "spicy": 0,
+      "umami": 9,
+      "bitter": 0.5
+    },
+    "derivedFrom": [
+      "anchovy",
+      "salt"
+    ],
+    "processing": [
+      "fermentation"
+    ],
+    "confidence": 0.9,
+    "source": "measured"
+  },
+  {
+    "ingredient": "lime",
+    "taste": {
+      "sweet": 1,
+      "sour": 10,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 1
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.9,
+    "source": "measured"
+  },
+  {
+    "ingredient": "lemon",
+    "taste": {
+      "sweet": 1,
+      "sour": 10,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 1
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.9,
+    "source": "measured"
+  },
+  {
+    "ingredient": "vinegar",
+    "taste": {
+      "sweet": 0.5,
+      "sour": 9,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0.5
+    },
+    "derivedFrom": [],
+    "processing": [
+      "fermentation"
+    ],
+    "confidence": 0.88,
+    "source": "measured"
+  },
+  {
+    "ingredient": "rice vinegar",
+    "taste": {
+      "sweet": 2,
+      "sour": 7,
+      "salty": 0.5,
+      "spicy": 0,
+      "umami": 0.5,
+      "bitter": 0
+    },
+    "derivedFrom": [
+      "rice",
+      "water"
+    ],
+    "processing": [
+      "fermentation"
+    ],
+    "confidence": 0.85,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "chili",
+    "taste": {
+      "sweet": 1,
+      "sour": 1,
+      "salty": 0,
+      "spicy": 8,
+      "umami": 1,
+      "bitter": 0.5
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "garlic",
+    "taste": {
+      "sweet": 1,
+      "sour": 0.5,
+      "salty": 0,
+      "spicy": 2,
+      "umami": 4,
+      "bitter": 1
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "onion",
+    "taste": {
+      "sweet": 3,
+      "sour": 0.5,
+      "salty": 0,
+      "spicy": 1,
+      "umami": 3,
+      "bitter": 0.5
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "ginger",
+    "taste": {
+      "sweet": 1,
+      "sour": 1,
+      "salty": 0,
+      "spicy": 4,
+      "umami": 1,
+      "bitter": 1
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "palm sugar",
+    "taste": {
+      "sweet": 9,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 1,
+      "bitter": 0.5
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.85,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "mirin",
+    "taste": {
+      "sweet": 7,
+      "sour": 1,
+      "salty": 1,
+      "spicy": 0,
+      "umami": 2,
+      "bitter": 0
+    },
+    "derivedFrom": [
+      "rice",
+      "sugar"
+    ],
+    "processing": [
+      "fermentation"
+    ],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "sake",
+    "taste": {
+      "sweet": 2,
+      "sour": 2,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 2,
+      "bitter": 1
+    },
+    "derivedFrom": [
+      "rice"
+    ],
+    "processing": [
+      "fermentation"
+    ],
+    "confidence": 0.75,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "miso",
+    "taste": {
+      "sweet": 2,
+      "sour": 1,
+      "salty": 8,
+      "spicy": 0,
+      "umami": 9,
+      "bitter": 0.5
+    },
+    "derivedFrom": [
+      "soybeans",
+      "salt",
+      "rice"
+    ],
+    "processing": [
+      "fermentation"
+    ],
+    "confidence": 0.9,
+    "source": "measured"
+  },
+  {
+    "ingredient": "tomato",
+    "taste": {
+      "sweet": 3,
+      "sour": 4,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 5,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.85,
+    "source": "measured"
+  },
+  {
+    "ingredient": "parmesan",
+    "taste": {
+      "sweet": 0.5,
+      "sour": 1,
+      "salty": 7,
+      "spicy": 0,
+      "umami": 9,
+      "bitter": 0.5
+    },
+    "derivedFrom": [
+      "milk",
+      "salt"
+    ],
+    "processing": [
+      "aging",
+      "fermentation"
+    ],
+    "confidence": 0.9,
+    "source": "measured"
+  },
+  {
+    "ingredient": "olive oil",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0.5,
+      "umami": 0,
+      "bitter": 2
+    },
+    "derivedFrom": [
+      "olive"
+    ],
+    "processing": [],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "vegetable oil",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.85,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "butter",
+    "taste": {
+      "sweet": 0.5,
+      "sour": 0,
+      "salty": 3,
+      "spicy": 0,
+      "umami": 1,
+      "bitter": 0
+    },
+    "derivedFrom": [
+      "cream"
+    ],
+    "processing": [],
+    "confidence": 0.85,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "rice",
+    "taste": {
+      "sweet": 1,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0.5,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "pasta",
+    "taste": {
+      "sweet": 1,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0.5,
+      "bitter": 0
+    },
+    "derivedFrom": [
+      "wheat"
+    ],
+    "processing": [],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "chicken",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.75,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "pork",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.75,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "beef",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.75,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "shrimp",
+    "taste": {
+      "sweet": 2,
+      "sour": 0,
+      "salty": 2,
+      "spicy": 0,
+      "umami": 6,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.75,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "cilantro",
+    "taste": {
+      "sweet": 0,
+      "sour": 1,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 4
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.7,
+    "source": "recipe"
+  },
+  {
+    "ingredient": "black pepper",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 4,
+      "umami": 0,
+      "bitter": 2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "msg",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 3,
+      "spicy": 0,
+      "umami": 10,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured"
+  },
+  {
+    "ingredient": "tamarind",
+    "taste": {
+      "sweet": 3,
+      "sour": 8,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 1,
+      "bitter": 1
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "coconut milk",
+    "taste": {
+      "sweet": 3,
+      "sour": 0,
+      "salty": 0.5,
+      "spicy": 0,
+      "umami": 1,
+      "bitter": 0
+    },
+    "derivedFrom": [
+      "coconut"
+    ],
+    "processing": [],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "green onion",
+    "taste": {
+      "sweet": 1,
+      "sour": 0.5,
+      "salty": 0,
+      "spicy": 1,
+      "umami": 2,
+      "bitter": 0.5
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.7,
+    "source": "recipe"
+  },
+  {
+    "ingredient": "sesame oil",
+    "taste": {
+      "sweet": 0.5,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 2,
+      "bitter": 1
+    },
+    "derivedFrom": [
+      "sesame"
+    ],
+    "processing": [
+      "roasting"
+    ],
+    "confidence": 0.75,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "gochujang",
+    "taste": {
+      "sweet": 4,
+      "sour": 1,
+      "salty": 6,
+      "spicy": 7,
+      "umami": 7,
+      "bitter": 0.5
+    },
+    "derivedFrom": [
+      "chili",
+      "rice",
+      "soybean",
+      "salt"
+    ],
+    "processing": [
+      "fermentation"
+    ],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "doenjang",
+    "taste": {
+      "sweet": 1,
+      "sour": 1,
+      "salty": 8,
+      "spicy": 0,
+      "umami": 9,
+      "bitter": 1
+    },
+    "derivedFrom": [
+      "soybean",
+      "salt"
+    ],
+    "processing": [
+      "fermentation"
+    ],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "kimchi",
+    "taste": {
+      "sweet": 1,
+      "sour": 7,
+      "salty": 6,
+      "spicy": 6,
+      "umami": 6,
+      "bitter": 0.5
+    },
+    "derivedFrom": [
+      "napa cabbage",
+      "chili",
+      "garlic",
+      "salt"
+    ],
+    "processing": [
+      "fermentation",
+      "pickling"
+    ],
+    "confidence": 0.75,
+    "source": "recipe"
+  },
+  {
+    "ingredient": "tofu",
+    "taste": {
+      "sweet": 0.5,
+      "sour": 0,
+      "salty": 0.5,
+      "spicy": 0,
+      "umami": 2,
+      "bitter": 0
+    },
+    "derivedFrom": [
+      "soybeans"
+    ],
+    "processing": [],
+    "confidence": 0.8,
+    "source": "nutrition"
+  },
+  {
+    "ingredient": "minced pork",
+    "taste": {
+      "sweet": 0.00625,
+      "sour": 0,
+      "salty": 0.16,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "steamed rice",
+    "taste": {
+      "sweet": 0.0125,
+      "sour": 1.0638297872340425,
+      "salty": 0.0025,
+      "spicy": 0,
+      "umami": 0.23333333333333334,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "banana leaf and string",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.3,
+    "source": "llm",
+    "reasoning": "Banana leaf and string are non-edible wrapping and binding materials used in cooking techniques like steaming, grilling, or boiling. Since standard nutritional composition data for consumption is unavailable, it is decomposed into its constituent physical packaging parts totaling 100 mL."
+  },
+  {
+    "ingredient": "egg",
+    "taste": {
+      "sweet": 0.05,
+      "sour": 0,
+      "salty": 0.355,
+      "spicy": 0,
+      "umami": 0.13333333333333333,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "kaffir lime leaf",
+    "taste": {
+      "sweet": 0.15,
+      "sour": 3.191489361702127,
+      "salty": 0.0075,
+      "spicy": 0,
+      "umami": 0.1,
+      "bitter": 0.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "curry paste",
+    "taste": {
+      "sweet": 0.4,
+      "sour": 0,
+      "salty": 5.75,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "tempura flour",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 1,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.3,
+    "source": "llm",
+    "reasoning": "Tempura flour (tenpurako) is a dry commercial premix composed primarily of low-gluten cake wheat flour, starch (cornstarch or potato starch), and chemical leaveners (baking powder/sodium bicarbonate). Composition values reflect standard MEXT Japanese Food Composition Data and standard manufacturer nutritional panels."
+  },
+  {
+    "ingredient": "rice bran oil",
+    "taste": {
+      "sweet": 0,
+      "sour": 1.0638297872340425,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "lime juice",
+    "taste": {
+      "sweet": 0.21249999999999997,
+      "sour": 10,
+      "salty": 0.005,
+      "spicy": 0,
+      "umami": 0.06666666666666667,
+      "bitter": 0.5
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "chilli flake",
+    "taste": {
+      "sweet": 0.625,
+      "sour": 0,
+      "salty": 0.075,
+      "spicy": 7.4618923448256975,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "boiled pork skin",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 0.1575,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "deep fried peanut",
+    "taste": {
+      "sweet": 0.5625,
+      "sour": 1.7021276595744679,
+      "salty": 1.125,
+      "spicy": 0,
+      "umami": 0.26666666666666666,
+      "bitter": 0.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "shallot",
+    "taste": {
+      "sweet": 0.98375,
+      "sour": 3.191489361702127,
+      "salty": 0.01,
+      "spicy": 0,
+      "umami": 0.2,
+      "bitter": 0.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "coriander",
+    "taste": {
+      "sweet": 0.11249999999999999,
+      "sour": 2.127659574468085,
+      "salty": 0.08750000000000001,
+      "spicy": 0,
+      "umami": 0.2,
+      "bitter": 0.5
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "sawtooth coriander",
+    "taste": {
+      "sweet": 0.0625,
+      "sour": 2.127659574468085,
+      "salty": 0.0075,
+      "spicy": 0,
+      "umami": 0.2,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "deep fried dried chilly",
+    "taste": {
+      "sweet": 0.625,
+      "sour": 0,
+      "salty": 0.075,
+      "spicy": 7.83163058335929,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "shredded unripe papaya",
+    "taste": {
+      "sweet": 0.1875,
+      "sour": 4.680851063829787,
+      "salty": 0.0075,
+      "spicy": 0,
+      "umami": 0.2,
+      "bitter": 1.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "long bean",
+    "taste": {
+      "sweet": 0.35,
+      "sour": 2.127659574468085,
+      "salty": 0.01,
+      "spicy": 0,
+      "umami": 0.26666666666666666,
+      "bitter": 1.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "cherry tomato",
+    "taste": {
+      "sweet": 0.325,
+      "sour": 5.74468085106383,
+      "salty": 0.0125,
+      "spicy": 0,
+      "umami": 0.32,
+      "bitter": 0.1
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "red chili",
+    "taste": {
+      "sweet": 0.6625000000000001,
+      "sour": 4.468085106382978,
+      "salty": 0.0225,
+      "spicy": 7.83163058335929,
+      "umami": 0.2,
+      "bitter": 0.05
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "dried shrimp",
+    "taste": {
+      "sweet": 0.0625,
+      "sour": 0,
+      "salty": 8.75,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "roasted peanut",
+    "taste": {
+      "sweet": 0.5875,
+      "sour": 1.4893617021276597,
+      "salty": 0.0125,
+      "spicy": 0,
+      "umami": 0.26666666666666666,
+      "bitter": 1.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "red chilli",
+    "taste": {
+      "sweet": 0.6631250000000001,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 7.83163058335929,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "plum tomato",
+    "taste": {
+      "sweet": 0.325,
+      "sour": 5.74468085106383,
+      "salty": 0.0125,
+      "spicy": 0,
+      "umami": 1.6,
+      "bitter": 0.1
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "green papaya strip",
+    "taste": {
+      "sweet": 0.3125,
+      "sour": 3.4042553191489358,
+      "salty": 0.0125,
+      "spicy": 0,
+      "umami": 0.2,
+      "bitter": 0.1
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "lime wedge",
+    "taste": {
+      "sweet": 0.21249999999999997,
+      "sour": 10,
+      "salty": 0.005,
+      "spicy": 0,
+      "umami": 0.06666666666666667,
+      "bitter": 1.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "thai garlic",
+    "taste": {
+      "sweet": 0.30625,
+      "sour": 0,
+      "salty": 0.045,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "brown sugar",
+    "taste": {
+      "sweet": 10,
+      "sour": 3.191489361702127,
+      "salty": 0.07,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "carrot strip",
+    "taste": {
+      "sweet": 0.5925,
+      "sour": 2.127659574468085,
+      "salty": 0.17250000000000001,
+      "spicy": 0,
+      "umami": 0.21999999999999997,
+      "bitter": 1.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "raw papaya",
+    "taste": {
+      "sweet": 0.3125,
+      "sour": 3.191489361702127,
+      "salty": 0.0075,
+      "spicy": 0,
+      "umami": 0.2,
+      "bitter": 0.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "fermented mussel",
+    "taste": {
+      "sweet": 1,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 9,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.3,
+    "source": "llm",
+    "reasoning": "Fermented mussel (such as Korean honghap-jeot) is prepared through salt-curing and enzymatic degradation of mussel proteins. Composition values reflect high sodium levels from the curing process, elevated free glutamate from proteolysis, low sugars, neutral-to-slightly acidic pH, and absence of capsaicin."
+  },
+  {
+    "ingredient": "culantro",
+    "taste": {
+      "sweet": 0.0625,
+      "sour": 2.127659574468085,
+      "salty": 0.035,
+      "spicy": 0,
+      "umami": 0.2,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "yardlong bean",
+    "taste": {
+      "sweet": 0.35,
+      "sour": 2.127659574468085,
+      "salty": 0.01,
+      "spicy": 0,
+      "umami": 0.2,
+      "bitter": 0.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "fresh chili",
+    "taste": {
+      "sweet": 0.6625000238418579,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 7.83163058335929,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "fresh vegetable",
+    "taste": {
+      "sweet": 0.4375,
+      "sour": 2.127659574468085,
+      "salty": 0.0375,
+      "spicy": 0,
+      "umami": 0.2,
+      "bitter": 1.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "carrot",
+    "taste": {
+      "sweet": 0.5925,
+      "sour": 2.127659574468085,
+      "salty": 0.17250000000000001,
+      "spicy": 0,
+      "umami": 0.21999999999999997,
+      "bitter": 0.1
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "data tomato",
+    "taste": {
+      "sweet": 0.325,
+      "sour": 5.74468085106383,
+      "salty": 0.0125,
+      "spicy": 0,
+      "umami": 1.6,
+      "bitter": 0.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "peanut",
+    "taste": {
+      "sweet": 0.5875,
+      "sour": 1.4893617021276597,
+      "salty": 0.045,
+      "spicy": 0,
+      "umami": 0.26666666666666666,
+      "bitter": 1.2
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "jinda chili",
+    "taste": {
+      "sweet": 0.625,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 7.83163058335929,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "unripe papaya",
+    "taste": {
+      "sweet": 0.1875,
+      "sour": 3.8297872340425525,
+      "salty": 0.0075,
+      "spicy": 0,
+      "umami": 0.06666666666666667,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "papaya",
+    "taste": {
+      "sweet": 0.9775,
+      "sour": 3.723404255319149,
+      "salty": 0.02,
+      "spicy": 0,
+      "umami": 0.06666666666666667,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "seasoning powder",
+    "taste": {
+      "sweet": 0.625,
+      "sour": 0,
+      "salty": 10,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "cold water",
+    "taste": {
+      "sweet": 0,
+      "sour": 0,
+      "salty": 0.0125,
+      "spicy": 0,
+      "umami": 0,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "yard long bean",
+    "taste": {
+      "sweet": 0.35,
+      "sour": 2.127659574468085,
+      "salty": 0.01,
+      "spicy": 0,
+      "umami": 0.2,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  },
+  {
+    "ingredient": "pickled crab",
+    "taste": {
+      "sweet": 3,
+      "sour": 0,
+      "salty": 0,
+      "spicy": 0,
+      "umami": 8.5,
+      "bitter": 0
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.3,
+    "source": "llm",
+    "reasoning": "Pickled crab (such as Korean ganjang-gejang or Southeast Asian salted/pickled crab) is prepared by curing raw crab in a seasoned soy sauce brine or salt brine. Composition data reflects high sodium from the curing brine, elevated free glutamate levels from fermented soy sauce and seafood proteolysis, mild natural sugars, and neutral-to-slightly acidic pH."
+  },
+  {
+    "ingredient": "all purpose flour",
+    "taste": {
+      "sweet": 0.0375,
+      "sour": 2.127659574468085,
+      "salty": 0.005,
+      "spicy": 0,
+      "umami": 0.6666666666666666,
+      "bitter": 0.1
+    },
+    "derivedFrom": [],
+    "processing": [],
+    "confidence": 0.95,
+    "source": "measured",
+    "reasoning": "Mapped from composition data"
+  }
+]
