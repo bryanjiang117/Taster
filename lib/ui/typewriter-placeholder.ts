@@ -121,6 +121,16 @@ export function shufflePhrases(
   return next;
 }
 
+/** Shuffle everything after the first item so SSR and hydration can share it. */
+export function shuffleRest(
+  phrases: readonly string[],
+  random: () => number = Math.random,
+): string[] {
+  if (phrases.length <= 1) return [...phrases];
+  const [first, ...rest] = phrases;
+  return [first!, ...shufflePhrases(rest, random)];
+}
+
 const DELAYS: Record<TypewriterPhase, number> = {
   type: 72,
   delete: 38,
