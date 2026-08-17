@@ -104,4 +104,31 @@ describe("ingredient resolution", () => {
     expect(result.source).toBe("llm");
     expect(result.taste.umami).toBe(7);
   });
+
+  it("notifies onLearned after each newly stored vector", async () => {
+    const store = new IngredientStore();
+    const learned: string[] = [];
+    await resolveIngredient("teriyaki sauce", {
+      store,
+      maxDepth: 3,
+      lookupUnknown: async (name) => {
+        if (name === "teriyaki sauce") {
+          return {
+            kind: "decomposition",
+            parts: [
+              { name: "soy sauce", volumeMl: 60 },
+              { name: "mirin", volumeMl: 40 },
+            ],
+          };
+        }
+        return { kind: "llm", taste: soy };
+      },
+      onLearned: (item) => {
+        learned.push(item.ingredient);
+      },
+    });
+    expect(learned).toEqual(
+      expect.arrayContaining(["soy sauce", "mirin", "teriyaki sauce"]),
+    );
+  });
 });

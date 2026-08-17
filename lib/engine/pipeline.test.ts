@@ -190,6 +190,70 @@ describe("profileDish pipeline", () => {
     expect(persisted).toBe(0);
   });
 
+  it("persists ingredients already resolved if the run is cut off later", async () => {
+    const controller = new AbortController();
+    const persisted: string[] = [];
+    let dishPersists = 0;
+    let lookups = 0;
+
+    const pending = profileDish("pho", {
+      llm: {
+        identifyDish: async (dish) => ({
+          dish,
+          country: "Vietnam",
+          culture: "Vietnamese",
+          nativeName: "phở",
+          language: "Vietnamese",
+          languageCode: "vi",
+          searchQueries: ["phở bò công thức"],
+        }),
+        extractRecipe: async () => null,
+        extractRecipeFromUrl: async (url) => ({
+          url,
+          ingredients: [
+            { name: "clove", volumeMl: 2 },
+            { name: "star anise", volumeMl: 5 },
+            { name: "beef", volumeMl: 400 },
+          ],
+        }),
+        canonicalizeIngredientNames: async (names) =>
+          Object.fromEntries(names.map((name) => [name, name])),
+        lookupIngredient: async (name) => {
+          lookups += 1;
+          if (lookups >= 2) {
+            controller.abort();
+            await new Promise(() => {});
+          }
+          return {
+            kind: "llm",
+            taste: { sweet: 0, sour: 0, salty: 1, spicy: 2, umami: 1, bitter: 4 },
+          };
+        },
+      },
+      search: {
+        search: async () => [
+          { title: "phở", url: "https://example.com/pho-1", snippet: "" },
+          { title: "phở", url: "https://example.com/pho-2", snippet: "" },
+          { title: "phở", url: "https://example.com/pho-3", snippet: "" },
+        ],
+      },
+      pages: { fetchText: async () => "x".repeat(500) },
+      store: new IngredientStore([]),
+      persistLearned: async (learned) => {
+        persisted.push(...learned.map((item) => item.ingredient));
+      },
+      persistDish: async () => {
+        dishPersists += 1;
+      },
+      signal: controller.signal,
+      timeLimitMs: 60_000,
+    });
+
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(persisted.length).toBeGreaterThan(0);
+    expect(dishPersists).toBe(0);
+  });
+
   it("translates leftover native names and tastes ingredients that miss the 50% cut", async () => {
     const lookedUp: string[] = [];
     const snapshots: Array<Array<{ name: string; pending: boolean }>> = [];

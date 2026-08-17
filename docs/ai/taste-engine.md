@@ -18,12 +18,13 @@ Raw concentration is **not** what the UI shows. A spoon of fish sauce in a bowl 
 
 ```ts
 effective_flavor = intrinsic_taste_strength × (ingredient_volume / final_dish_volume)
-score = 10 * (1 - exp(-raw / TASTE_SCALE_TAU))  // TASTE_SCALE_TAU in taste.ts
+score = 10 * (1 - exp(-raw / tau))  // tau = TASTE_SCALE_TAU (0.8); sweet uses 1.05 via TASTE_SCALE_TAU_BY_DIM
 score = min(score, max ingredient on that dimension)
 ```
 
 - **Lower `TASTE_SCALE_TAU`** (e.g. `0.25`) → louder dishes
 - **Raise it** (e.g. `0.5`) → milder dishes
+- Sweet alone can be tuned via `TASTE_SCALE_TAU_BY_DIM.sweet` (higher = quieter) without moving salt/umami/heat
 - Do not skip this step or substitute an LLM score
 - Tests: `lib/engine/taste.test.ts` (`toPerceptualScore`)
 
@@ -40,7 +41,7 @@ Order:
 3. Decomposition: recurse parts, combine by volume, apply `applyProcessingToTaste`.
 4. LLM taste estimate (`source: "llm"`, low confidence). The lookup prompt anchors 10 to everyday references (lemon/lime = 10 sour, salt = 10 salty) so the model does not hedge citrus down to 8–9.
 
-Always `store.put` after resolve. The API then `INSERT OR IGNORE`s names that were not in the store at the start of the request. Existing catalog rows are never overwritten.
+Always `store.put` after resolve, and `INSERT OR IGNORE` that vector into Turso immediately (not only at end-of-run). Existing catalog rows are never overwritten. A timed-out taste still keeps ingredients that finished resolving.
 
 ## Confidence
 
@@ -61,6 +62,7 @@ A page matches the dish if its **native name** appears, or if a romanized title 
 
 Aim for 3 on-topic recipes, then up to 7 if they disagree. Search Gemini and DuckDuckGo in parallel and stop once there are enough untried titled hits for the remaining recipe slots (do not keep querying just to fill a pool of 8). Fetch page HTML first and parse it only when the text is substantial or includes JSON-LD (so a JavaScript shell cannot be treated as a recipe). Store the post-redirect page URL on the recipe (Gemini search often returns `vertexaisearch.cloud.google.com/grounding-api-redirect/...` links that do not open in a browser). URL-context is only used when the live fetch returned 2xx but the HTML was too thin (JS shell). A 4xx/5xx or failed fetch drops that URL — do not count Google's cached extract as an analyzed recipe. After the first three recipes, keep searching if flavors disagree and more titled pages are needed. URL reads for a wave run in parallel (batch size = remaining recipes needed). Collection stops at `COLLECT_TIME_LIMIT_MS` (30s) and scores whatever recipes were extracted, even if fewer than 3. In-flight reads started before the limit still finish; no new wave starts after it. Only fail if zero usable recipes. Search uses `expandSearchQueries`. Always merge Gemini + DuckDuckGo hits. If titles omit the dish name, still try those URLs until we have enough recipes or time runs out.
 - Quantity = median(volume / recipe_volume) × target final volume.
+- Count units (`piece`, `whole`, `leg quarter`, …) convert via `quantityToMl(amount, unit, ingredientName)` in `quantity.ts`. Meats and produce get typical edible volumes (chicken piece ≈ 250 ml, whole bird ≈ 1600 ml); a flat 15 ml/piece made marinades look like pure sugar. Measured units (tsp/tbsp/cup/g/lb) are unchanged.
 
 ## Processing multipliers
 

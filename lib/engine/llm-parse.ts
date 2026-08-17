@@ -68,7 +68,11 @@ export function recipeFromExtractJson(
     .filter((item) => item.name?.trim())
     .map((item) => ({
       name: item.name.trim(),
-      volumeMl: quantityToMl(item.amount || 1, item.unit || "piece"),
+      volumeMl: quantityToMl(
+        item.amount || 1,
+        item.unit || "piece",
+        item.name.trim(),
+      ),
       role: parseIngredientRole(item.role),
     }));
   if (!ingredients.length) return null;

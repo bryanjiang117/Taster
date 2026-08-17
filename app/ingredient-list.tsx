@@ -5,6 +5,10 @@ import { createPortal } from "react-dom";
 import { TASTE_DIMENSIONS, type TasteProfile } from "@/lib/engine/taste";
 import type { FoundIngredient } from "@/lib/engine/found-ingredients";
 
+function coarsePointer(): boolean {
+  return window.matchMedia("(pointer: coarse)").matches;
+}
+
 export function IngredientList({ items }: { items: FoundIngredient[] }) {
   const [open, setOpen] = useState<FoundIngredient | null>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -32,6 +36,22 @@ export function IngredientList({ items }: { items: FoundIngredient[] }) {
     };
   }, [items]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Element | null;
+      if (!target) return;
+      if (target.closest(".ing-tip") || target.closest(".ing-name")) return;
+      cancelHide();
+      setOpen(null);
+      setAnchor(null);
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
+
   function cancelHide() {
     if (hideTimer.current == null) return;
     window.clearTimeout(hideTimer.current);
@@ -42,6 +62,12 @@ export function IngredientList({ items }: { items: FoundIngredient[] }) {
     cancelHide();
     setOpen(item);
     setAnchor(rect);
+  }
+
+  function hideNow() {
+    cancelHide();
+    setOpen(null);
+    setAnchor(null);
   }
 
   function scheduleHide() {
@@ -64,14 +90,29 @@ export function IngredientList({ items }: { items: FoundIngredient[] }) {
               <span
                 className="ing-name"
                 tabIndex={0}
+                aria-expanded={open?.name === row.name}
                 onMouseEnter={(event) => {
+                  if (coarsePointer()) return;
                   show(row, event.currentTarget.getBoundingClientRect());
                 }}
-                onMouseLeave={scheduleHide}
+                onMouseLeave={() => {
+                  if (coarsePointer()) return;
+                  scheduleHide();
+                }}
                 onFocus={(event) => {
+                  if (coarsePointer()) return;
                   show(row, event.currentTarget.getBoundingClientRect());
                 }}
-                onBlur={scheduleHide}
+                onBlur={() => {
+                  if (coarsePointer()) return;
+                  scheduleHide();
+                }}
+                onClick={(event) => {
+                  if (!coarsePointer()) return;
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  if (open?.name === row.name) hideNow();
+                  else show(row, rect);
+                }}
               >
                 {row.name}
               </span>
@@ -127,12 +168,23 @@ function IngredientTip({
     const tip = el.getBoundingClientRect();
     const pad = 8;
     const gap = 10;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
     let left = anchor.left - tip.width - gap;
-    if (left < pad) left = pad;
     let top = anchor.top;
-    if (top + tip.height > window.innerHeight - pad) {
-      top = Math.max(pad, window.innerHeight - tip.height - pad);
+
+    if (left < pad) {
+      left = Math.min(Math.max(pad, anchor.left), vw - tip.width - pad);
+      top = anchor.bottom + gap;
+      if (top + tip.height > vh - pad) {
+        top = Math.max(pad, anchor.top - tip.height - gap);
+      }
+    } else if (top + tip.height > vh - pad) {
+      top = Math.max(pad, vh - tip.height - pad);
     }
+
+    left = Math.min(Math.max(pad, left), Math.max(pad, vw - tip.width - pad));
     setPos({ top, left });
   }, [anchor, item.name, item.recipes.length]);
 

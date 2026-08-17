@@ -19,12 +19,18 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: Newsreader, "Times New Roman", serif;
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
 }
 
 main {
   max-width: 34rem;
   margin: 0 auto;
   padding: 4.5rem 1.25rem 3rem;
+  padding-top: max(4.5rem, env(safe-area-inset-top, 0px) + 2.5rem);
+  padding-right: max(1.25rem, env(safe-area-inset-right, 0px) + 0.75rem);
+  padding-bottom: max(3rem, env(safe-area-inset-bottom, 0px) + 1.5rem);
+  padding-left: max(1.25rem, env(safe-area-inset-left, 0px) + 0.75rem);
 }
 
 h1 {
@@ -202,6 +208,11 @@ input:focus {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.sheet-title strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .sheet-mark {
@@ -571,6 +582,97 @@ input:focus {
 .ing-tip p {
   margin: 0.25rem 0 0;
   color: var(--muted);
+}
+
+@media (max-width: 40rem) {
+  main {
+    padding-top: max(2.75rem, env(safe-area-inset-top, 0px) + 1.5rem);
+    padding-right: max(1rem, env(safe-area-inset-right, 0px) + 0.65rem);
+    padding-bottom: max(2.25rem, env(safe-area-inset-bottom, 0px) + 1.25rem);
+    padding-left: max(1rem, env(safe-area-inset-left, 0px) + 0.65rem);
+  }
+
+  h1 {
+    font-size: 2.05rem;
+  }
+
+  .lede {
+    margin-bottom: 1.5rem;
+  }
+
+  input {
+    /* Keep ≥16px so iOS does not zoom the field on focus. */
+    font-size: max(1.2rem, 16px);
+  }
+
+  .taste {
+    width: 100%;
+    justify-self: stretch;
+    min-height: 2.75rem;
+    padding: 0.7rem 0.9rem;
+  }
+
+  .mode {
+    gap: 0.85rem;
+  }
+
+  .mode-btn {
+    min-width: 3.1rem;
+    min-height: 2.4rem;
+    padding: 0.35rem 0.55rem;
+  }
+
+  .sheet header > span,
+  .meta,
+  .footnote {
+    overflow-wrap: anywhere;
+  }
+
+  .ings-scroller::after {
+    right: 0;
+  }
+
+  .ings ul {
+    padding-right: 0;
+  }
+
+  .ings li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.35rem 0.75rem;
+  }
+
+  .ing-name {
+    grid-column: 1;
+    grid-row: 1;
+    padding: 0.45rem 0.25rem 0.1rem 0;
+  }
+
+  .ing-count {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 0.45rem 0 0.1rem;
+    align-self: start;
+  }
+
+  .ing-flavors {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding: 0 0 0.5rem;
+    white-space: normal;
+  }
+
+  .log-window {
+    padding-right: 0.35rem;
+  }
+
+  .log li {
+    gap: 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  .log-msg {
+    min-height: 1.55rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

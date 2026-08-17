@@ -112,7 +112,7 @@ export function recipeExtractPrompt(
   return `Extract a cooking recipe from this page text. If it is not a recipe, return {"ingredients":[]}.
 ${culinaryContextLine(context)}
 ${preferTargetDishLine(context)}
-Convert quantities to numeric amount + unit. If a quantity is missing, still include the ingredient with name only.
+Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, piece). Prefer g or lb for meat and other large solids; use piece only for countable items. If a quantity is missing, still include the ingredient with name only.
 Write each ingredient as exactly one singular English grocery food. Never list two foods in one ingredient.
 For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.
@@ -130,7 +130,7 @@ export function recipeExtractFromUrlPrompt(
   return `Read this recipe URL and extract the recipe. If it is not a recipe, return {"ingredients":[]}.
 ${culinaryContextLine(context)}
 ${preferTargetDishLine(context)}
-Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, clove, pinch, piece). If a quantity is missing, still include the ingredient with name only.
+Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, piece). Prefer g or lb for meat and other large solids; use piece only for countable items. If a quantity is missing, still include the ingredient with name only.
 Write each ingredient as exactly one singular English grocery food (soy sauce, tofu, green papaya). Never list two foods in one ingredient.
 For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.

@@ -35,6 +35,8 @@ export type ResolveDeps = {
   store: IngredientStore;
   maxDepth?: number;
   lookupUnknown: (name: string, depth: number) => Promise<UnknownLookup>;
+  /** Called after each newly resolved vector is written to the in-memory store. */
+  onLearned?: (item: ResolvedIngredient) => Promise<void> | void;
 };
 
 export async function resolveIngredient(
@@ -52,6 +54,7 @@ export async function resolveIngredient(
     const fallback = await deps.lookupUnknown(canonical, depth);
     const resolved = fromLookup(canonical, fallback, [], "llm");
     deps.store.put(resolved);
+    await deps.onLearned?.(resolved);
     return resolved;
   }
 
@@ -72,6 +75,7 @@ export async function resolveIngredient(
       reasoning: "Mapped from composition data",
     };
     deps.store.put(resolved);
+    await deps.onLearned?.(resolved);
     return resolved;
   }
 
@@ -105,11 +109,13 @@ export async function resolveIngredient(
       reasoning: `Decomposed into ${lookup.parts.map((p) => p.name).join(", ")}`,
     };
     deps.store.put(resolved);
+    await deps.onLearned?.(resolved);
     return resolved;
   }
 
   const resolved = fromLookup(canonical, lookup, lookup.processing ?? [], "llm");
   deps.store.put(resolved);
+  await deps.onLearned?.(resolved);
   return resolved;
 }
 

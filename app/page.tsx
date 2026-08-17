@@ -159,7 +159,7 @@ export default function HomePage() {
         return;
       }
 
-      await readProgressStream(
+      const outcome = await readProgressStream(
         response.body,
         (event) => {
           if (abort.signal.aborted) return;
@@ -177,6 +177,11 @@ export default function HomePage() {
         },
         abort.signal,
       );
+      if (abort.signal.aborted) return;
+      if (outcome === "incomplete") {
+        setSteps((current) => finishRunningSteps(current));
+        setError("Taste timed out before finishing. Try again.");
+      }
     } catch (error) {
       if (isAbortError(error)) return;
       setError("Network error.");
@@ -369,6 +374,12 @@ function upsertStep(
   const next = [...current];
   next[index] = incoming;
   return next;
+}
+
+function finishRunningSteps(steps: ProgressStepEvent[]): ProgressStepEvent[] {
+  return steps.map((step) =>
+    step.status === "running" ? { ...step, status: "done" as const } : step,
+  );
 }
 
 function label(dim: string): string {
