@@ -7,7 +7,10 @@ import { loadProductionDishStore, persistProductionDish } from "@/lib/engine/dis
 import { DuckDuckGoSearch, FetchPageClient, searchWithFallback } from "@/lib/engine/search";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+/** Pho-scale runs (recipe collect ≤30s + many unknown ingredient LLM lookups) exceed 60s on Vercel. */
+export const maxDuration = 300;
+
+const KEEPALIVE_MS = 15_000;
 
 export async function POST(request: Request) {
   const body = (await request.json()) as {
@@ -30,6 +33,7 @@ export async function POST(request: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       const started = Date.now();
+      let keepalive: ReturnType<typeof setInterval> | undefined;
       const send = (event: ProgressEvent) => {
         if (stop.signal.aborted || request.signal.aborted) {
           abortStop();
@@ -45,6 +49,16 @@ export async function POST(request: Request) {
       };
 
       try {
+        // SSE comment keepalives — HTTP/1.1 proxies may drop idle streams during long Gemini lookups.
+        keepalive = setInterval(() => {
+          if (stop.signal.aborted || request.signal.aborted) return;
+          try {
+            controller.enqueue(encoder.encode(`: keepalive\n\n`));
+          } catch {
+            abortStop();
+          }
+        }, KEEPALIVE_MS);
+
         const llm = new GeminiLlm();
         const geminiSearch = new GeminiSearch(llm);
         const ddg = new DuckDuckGoSearch(stop.signal);
@@ -76,6 +90,7 @@ export async function POST(request: Request) {
           error instanceof Error ? error.message : "Taste profile failed.";
         send({ type: "error", error: message, totalMs: Date.now() - started });
       } finally {
+        if (keepalive) clearInterval(keepalive);
         request.signal.removeEventListener("abort", abortStop);
         try {
           controller.close();

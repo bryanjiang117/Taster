@@ -40,7 +40,7 @@ Order:
 3. Decomposition: recurse parts, combine by volume, apply `applyProcessingToTaste`.
 4. LLM taste estimate (`source: "llm"`, low confidence). The lookup prompt anchors 10 to everyday references (lemon/lime = 10 sour, salt = 10 salty) so the model does not hedge citrus down to 8–9.
 
-Always `store.put` after resolve. The API then `INSERT OR IGNORE`s names that were not in the store at the start of the request. Existing catalog rows are never overwritten.
+Always `store.put` after resolve, and `INSERT OR IGNORE` that vector into Turso immediately (not only at end-of-run). Existing catalog rows are never overwritten. A timed-out taste still keeps ingredients that finished resolving.
 
 ## Confidence
 

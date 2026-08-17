@@ -1,13 +1,23 @@
-import { applyDishVisit, createDishRecord, type CachedDish, type SearchMode } from "./dish-cache";
+import {
+  applyDishVisit,
+  createDishRecord,
+  type CachedDish,
+  type SearchMode,
+} from "./dish-cache";
 import { DishStore } from "./dish-store";
 import { dishConfidence } from "./confidence";
 import { weightedTasteFromIngredients } from "./concentration";
+import { applyEnglishNames, uniqueIngredientNames } from "./english-names";
 import {
-  applyEnglishNames,
-  uniqueIngredientNames,
-} from "./english-names";
-import { matchesDish, recipeMatchesDish, type DishIdentity } from "./dish-match";
-import { foundIngredientsFromRecipes, flavorsFromTaste, accompanimentFootnote } from "./found-ingredients";
+  matchesDish,
+  recipeMatchesDish,
+  type DishIdentity,
+} from "./dish-match";
+import {
+  foundIngredientsFromRecipes,
+  flavorsFromTaste,
+  accompanimentFootnote,
+} from "./found-ingredients";
 import { normalizeIngredientName } from "./normalize";
 import { applySolubleRetention } from "./processing";
 import { runLoggedStep, type ProgressSink } from "./progress";
@@ -22,7 +32,7 @@ import {
   tasteOfRecipe,
 } from "./recipe-sample";
 import { expandSearchQueries, MIN_SEARCH_POOL } from "./search-queries";
-import { resolveIngredient, type UnknownLookup } from "./resolve";
+import { resolveIngredient, type ResolveDeps, type UnknownLookup } from "./resolve";
 import {
   culinaryContextFromOrigin,
   type CulinaryContext,
@@ -33,7 +43,14 @@ import type { PageClient, SearchClient, SearchHit } from "./search";
 import { asFetchedPage, pageFetchOk, pageTextIsTrusted } from "./search";
 import { loadProductionStore } from "./catalog";
 import { IngredientStore } from "./store";
-import { capTaste, ceilingTaste, clampTaste, roundTaste, toPerceptualTaste, TASTE_DIMENSIONS } from "./taste";
+import {
+  capTaste,
+  ceilingTaste,
+  clampTaste,
+  roundTaste,
+  toPerceptualTaste,
+  TASTE_DIMENSIONS,
+} from "./taste";
 import {
   MAX_RESOLUTION_DEPTH,
   type DishOrigin,
@@ -77,7 +94,9 @@ export type PipelineDeps = {
   timeLimitMs?: number;
   now?: () => number;
   onProgress?: ProgressSink;
-  persistLearned?: (learned: ResolvedIngredient[]) => Promise<number | void> | number | void;
+  persistLearned?: (
+    learned: ResolvedIngredient[],
+  ) => Promise<number | void> | number | void;
   persistDish?: (record: CachedDish) => Promise<number | void> | number | void;
   signal?: AbortSignal;
 };
@@ -92,6 +111,7 @@ export async function profileDish(
   throwIfAborted(deps.signal);
   const store = deps.store ?? (await loadProductionStore());
   const knownAtStart = new Set(store.all().map((item) => item.ingredient));
+  const learnedFlush = createLearnedFlush(knownAtStart, deps.persistLearned);
   const now = deps.now ?? Date.now;
   const started = now();
   const searchMode = deps.searchMode ?? "native";
@@ -105,7 +125,15 @@ export async function profileDish(
     );
   }
   if (classification.kind === "ingredient") {
-    return profileIngredient(dish, classification.name, store, knownAtStart, deps, emit);
+    return profileIngredient(
+      dish,
+      classification.name,
+      store,
+      knownAtStart,
+      learnedFlush,
+      deps,
+      emit,
+    );
   }
 
   const matched = await matchExistingDish(dish, deps, emit);
@@ -136,7 +164,13 @@ export async function profileDish(
     deps.signal,
   );
 
-  const collected = await collectRecipes(origin, deps, store, started);
+  const collected = await collectRecipes(
+    origin,
+    deps,
+    store,
+    started,
+    learnedFlush.onLearned,
+  );
 
   if (collected.recipes.length === 0) {
     throw new Error(emptyRecipeMessage(dish, collected));
@@ -149,7 +183,7 @@ export async function profileDish(
     culinaryContextFromOrigin(origin),
   );
 
-  await resolveMissingIngredients(recipes, store, deps);
+  await resolveMissingIngredients(recipes, store, deps, learnedFlush.onLearned);
 
   const representative = await runLoggedStep(
     emit,
@@ -185,12 +219,13 @@ export async function profileDish(
         `resolve:${ingredient.name}`,
         known
           ? `Loading cached taste vector for ${ingredient.name}`
-          : `Resolving unknown ingredient ${ingredient.name} (composition → decompose depth≤${MAX_RESOLUTION_DEPTH} → LLM)`,
+          : `Resolving unknown ingredient ${ingredient.name}`,
         () =>
           resolveIngredient(ingredient.name, {
             store,
             maxDepth: MAX_RESOLUTION_DEPTH,
             lookupUnknown: (name) => deps.llm.lookupIngredient(name),
+            onLearned: learnedFlush.onLearned,
           }),
         deps.signal,
       ),
@@ -213,7 +248,10 @@ export async function profileDish(
         })),
         representative.built.finalVolumeMl,
       );
-      scored = applySolubleRetention(scored, representative.volumeInfo.solubleRetention);
+      scored = applySolubleRetention(
+        scored,
+        representative.volumeInfo.solubleRetention,
+      );
       const perceptual = toPerceptualTaste(scored);
       return capTaste(
         perceptual,
@@ -223,28 +261,32 @@ export async function profileDish(
     deps.signal,
   );
 
-  const contributions = representative.built.ingredients.map((ingredient, i) => ({
-    confidence: resolved[i]!.confidence,
-    contribution: TASTE_DIMENSIONS.reduce(
-      (sum, dim) =>
-        sum +
-        resolved[i]!.taste[dim] *
-          (ingredient.volumeMl / representative.built.finalVolumeMl),
-      0,
-    ),
-  }));
+  const contributions = representative.built.ingredients.map(
+    (ingredient, i) => ({
+      confidence: resolved[i]!.confidence,
+      contribution: TASTE_DIMENSIONS.reduce(
+        (sum, dim) =>
+          sum +
+          resolved[i]!.taste[dim] *
+            (ingredient.volumeMl / representative.built.finalVolumeMl),
+        0,
+      ),
+    }),
+  );
 
   const inconsistency = flavorInconsistency(
     recipes.map((recipe) => tasteOfRecipe(recipe, store)),
   );
 
-  const learned = store.all().filter((item) => !knownAtStart.has(item.ingredient));
+  const learned = store
+    .all()
+    .filter((item) => !knownAtStart.has(item.ingredient));
   if (learned.length && deps.persistLearned) {
     await runLoggedStep(
       emit,
       "persist-seed",
       `Saving ${learned.length} new ingredient${learned.length === 1 ? "" : "s"} to the ingredient catalog`,
-      () => Promise.resolve(deps.persistLearned!(learned)),
+      () => learnedFlush.flushRemaining(store),
       deps.signal,
     );
   }
@@ -272,7 +314,15 @@ export async function profileDish(
     footnote,
   };
 
-  const cached = await persistDishProfile(dish, profile, recipes, store, matched, deps, emit);
+  const cached = await persistDishProfile(
+    dish,
+    profile,
+    recipes,
+    store,
+    matched,
+    deps,
+    emit,
+  );
   if (cached) profile.timesTasted = cached.timesTasted;
 
   return profile;
@@ -291,8 +341,12 @@ async function collectRecipes(
   deps: PipelineDeps,
   store: IngredientStore,
   started: number,
+  onLearned?: ResolveDeps["onLearned"],
 ): Promise<RecipeCollection> {
-  const identity: DishIdentity = { dish: origin.dish, nativeName: origin.nativeName };
+  const identity: DishIdentity = {
+    dish: origin.dish,
+    nativeName: origin.nativeName,
+  };
   const maxRecipes = deps.recipeLimit ?? MAX_RECIPES;
   const minRecipes = Math.min(MIN_RECIPES, maxRecipes);
   const timeLimitMs = deps.timeLimitMs ?? COLLECT_TIME_LIMIT_MS;
@@ -309,11 +363,16 @@ async function collectRecipes(
 
   const uniqueHits = () => dedupeUrls(hits);
   const titledHits = (pool: SearchHit[]) =>
-    pool.filter((hit) => matchesDish(`${hit.title} ${hit.snippet} ${hit.url}`, identity));
+    pool.filter((hit) =>
+      matchesDish(`${hit.title} ${hit.snippet} ${hit.url}`, identity),
+    );
   const untitledHits = (pool: SearchHit[]) =>
-    pool.filter((hit) => !matchesDish(`${hit.title} ${hit.snippet} ${hit.url}`, identity));
+    pool.filter(
+      (hit) => !matchesDish(`${hit.title} ${hit.snippet} ${hit.url}`, identity),
+    );
   const untriedTitledCount = () =>
-    titledHits(uniqueHits()).filter((hit) => !tried.has(urlKey(hit.url))).length;
+    titledHits(uniqueHits()).filter((hit) => !tried.has(urlKey(hit.url)))
+      .length;
 
   const searchUntil = async (minUnique: number) => {
     for (const query of queries) {
@@ -334,7 +393,9 @@ async function collectRecipes(
         hits.push(...found);
       } catch (error) {
         rethrowIfAborted(error);
-        searchErrors.push(error instanceof Error ? error.message : "search failed");
+        searchErrors.push(
+          error instanceof Error ? error.message : "search failed",
+        );
       }
     }
   };
@@ -350,11 +411,14 @@ async function collectRecipes(
     if (aligned !== recipes) {
       recipes.splice(0, recipes.length, ...aligned);
     }
-    await resolveMissingIngredients(recipes, store, deps);
+    await resolveMissingIngredients(recipes, store, deps, onLearned);
     const inconsistency = flavorInconsistency(
       recipes.map((recipe) => tasteOfRecipe(recipe, store)),
     );
-    const needed = Math.min(maxRecipes, Math.max(recipes.length, recipesNeeded(inconsistency)));
+    const needed = Math.min(
+      maxRecipes,
+      Math.max(recipes.length, recipesNeeded(inconsistency)),
+    );
     if (needed > target) {
       deps.onProgress?.({
         type: "step",
@@ -440,7 +504,11 @@ async function collectRecipes(
   await searchUntil(MIN_SEARCH_POOL);
   await extractFrom(titledHits(uniqueHits()));
 
-  while (recipes.length < target && searched.size < queries.length && !timedOut()) {
+  while (
+    recipes.length < target &&
+    searched.size < queries.length &&
+    !timedOut()
+  ) {
     await searchUntil(uniqueHits().length + 4);
     await extractFrom(titledHits(uniqueHits()));
   }
@@ -492,7 +560,10 @@ function emptyRecipeMessage(dish: string, collected: RecipeCollection): string {
   if (collected.hitCount === 0) {
     return `No recipe pages came back for "${dish}". Origin search queries may have been too weak — try again.`;
   }
-  if (collected.offTopicDropped > 0 && collected.offTopicDropped === collected.hitCount) {
+  if (
+    collected.offTopicDropped > 0 &&
+    collected.offTopicDropped === collected.hitCount
+  ) {
     return `Search returned ${collected.hitCount} pages for "${dish}", but they were other dishes. Try again.`;
   }
   if (collected.skippedOtherDish > 0) {
@@ -599,7 +670,9 @@ function richerRecipe(a: Recipe | null, b: Recipe | null): Recipe | null {
 }
 
 function usableExtract(recipe: Recipe | null): recipe is Recipe {
-  return Boolean(recipe && recipe.ingredients.length >= MIN_EXTRACT_INGREDIENTS);
+  return Boolean(
+    recipe && recipe.ingredients.length >= MIN_EXTRACT_INGREDIENTS,
+  );
 }
 
 function finishExtract(recipe: Recipe | null, language: string): Recipe | null {
@@ -674,6 +747,7 @@ async function resolveMissingIngredients(
   recipes: Recipe[],
   store: IngredientStore,
   deps: PipelineDeps,
+  onLearned?: ResolveDeps["onLearned"],
 ): Promise<void> {
   const missing = uniqueIngredientNames(recipes).filter(
     (name) => name && !store.has(name),
@@ -682,12 +756,13 @@ async function resolveMissingIngredients(
     await runLoggedStep(
       deps.onProgress,
       `resolve:${name}`,
-      `Resolving unknown ingredient ${name} (composition → decompose depth≤${MAX_RESOLUTION_DEPTH} → LLM)`,
+      `Resolving unknown ingredient ${name}`,
       () =>
         resolveIngredient(name, {
           store,
           maxDepth: MAX_RESOLUTION_DEPTH,
           lookupUnknown: (n) => deps.llm.lookupIngredient(n),
+          onLearned,
         }),
       deps.signal,
     );
@@ -716,10 +791,11 @@ function commonProcesses(recipes: Recipe[]): ProcessEffect[] {
     if (list.length / recipes.length < 0.5) continue;
     out.push({
       type: type as ProcessEffect["type"],
-      volumeDeltaMl: median(list.map((item) => item.volumeDeltaMl ?? 0)) || undefined,
-      discardedSolubleFraction: median(
-        list.map((item) => item.discardedSolubleFraction ?? 0),
-      ) || undefined,
+      volumeDeltaMl:
+        median(list.map((item) => item.volumeDeltaMl ?? 0)) || undefined,
+      discardedSolubleFraction:
+        median(list.map((item) => item.discardedSolubleFraction ?? 0)) ||
+        undefined,
     });
   }
   return out;
@@ -761,6 +837,7 @@ async function profileIngredient(
   classifiedName: string,
   store: IngredientStore,
   knownAtStart: Set<string>,
+  learnedFlush: LearnedFlush,
   deps: PipelineDeps,
   emit: ProgressSink | undefined,
 ): Promise<DishProfileResult> {
@@ -779,12 +856,13 @@ async function profileIngredient(
     `resolve:${name}`,
     fromCache
       ? `Loading cached taste vector for ${name} from the ingredient catalog`
-      : `Resolving unknown ingredient ${name} (composition → decompose depth≤${MAX_RESOLUTION_DEPTH} → LLM)`,
+      : `Resolving unknown ingredient ${name}`,
     () =>
       resolveIngredient(name, {
         store,
         maxDepth: MAX_RESOLUTION_DEPTH,
         lookupUnknown: (lookupName) => deps.llm.lookupIngredient(lookupName),
+        onLearned: learnedFlush.onLearned,
       }),
     deps.signal,
   );
@@ -817,13 +895,15 @@ async function profileIngredient(
     deps.signal,
   );
 
-  const learned = store.all().filter((item) => !knownAtStart.has(item.ingredient));
+  const learned = store
+    .all()
+    .filter((item) => !knownAtStart.has(item.ingredient));
   if (learned.length && deps.persistLearned) {
     await runLoggedStep(
       emit,
       "persist-seed",
       `Saving ${learned.length} new ingredient${learned.length === 1 ? "" : "s"} to the ingredient catalog`,
-      () => Promise.resolve(deps.persistLearned!(learned)),
+      () => learnedFlush.flushRemaining(store),
       deps.signal,
     );
   }
@@ -900,7 +980,9 @@ function resultFromCachedDish(
     recipesAnalyzed: record.snapshot.recipesAnalyzed,
     representative: record.snapshot.representative,
     provenance: record.snapshot.provenance,
-    footnote: record.snapshot.footnote ?? accompanimentFootnote(record.snapshot.ingredients),
+    footnote:
+      record.snapshot.footnote ??
+      accompanimentFootnote(record.snapshot.ingredients),
     timesTasted: record.timesTasted,
     fromCache,
   };
@@ -961,6 +1043,42 @@ function median(values: number[]): number {
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+type LearnedFlush = {
+  onLearned: NonNullable<ResolveDeps["onLearned"]>;
+  flushRemaining: (store: IngredientStore) => Promise<void>;
+};
+
+/** Persist each newly resolved ingredient immediately so a mid-run timeout keeps what was learned. */
+function createLearnedFlush(
+  knownAtStart: Set<string>,
+  persistLearned: PipelineDeps["persistLearned"],
+): LearnedFlush {
+  const flushed = new Set<string>();
+
+  const persistOne = async (item: ResolvedIngredient) => {
+    if (!persistLearned) return;
+    if (knownAtStart.has(item.ingredient) || flushed.has(item.ingredient)) return;
+    await persistLearned([item]);
+    flushed.add(item.ingredient);
+  };
+
+  return {
+    onLearned: persistOne,
+    async flushRemaining(store) {
+      if (!persistLearned) return;
+      const pending = store
+        .all()
+        .filter(
+          (item) =>
+            !knownAtStart.has(item.ingredient) && !flushed.has(item.ingredient),
+        );
+      if (!pending.length) return;
+      await persistLearned(pending);
+      for (const item of pending) flushed.add(item.ingredient);
+    },
+  };
 }
 
 export type { UnknownLookup };
