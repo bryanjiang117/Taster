@@ -18,7 +18,7 @@ input
     → representative recipe (≥50% of in-dish appearances, median volume share; out-only never scored)
     → apply cooking volume effects
     → raw = intrinsic × (ingredient_volume / final_volume)   // often < 1
-    → toPerceptualTaste(raw) via TASTE_SCALE_TAU (default 0.35)
+    → toPerceptualTaste(raw) via TASTE_SCALE_TAU (sweet slightly quieter via TASTE_SCALE_TAU_BY_DIM)
     → cap each dimension at the strongest ingredient in the mix
     → round 0–10 + confidence; footnote for out-only accompaniments
     → upsert Turso `dishes` (running mean unless Euclidean outlier > 4; timesTasted always += 1)

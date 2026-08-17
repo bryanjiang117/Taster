@@ -47,6 +47,11 @@ export function scaleTaste(taste: TasteProfile, factor: number): TasteProfile {
 /** Raw concentration (typically 0.05–0.8) that maps to ~6.3/10. Smaller = louder dish scores. */
 export const TASTE_SCALE_TAU = 0.8;
 
+/** Sweet reads a bit hotter than salt/umami at the same dissolved share; quiet it slightly. */
+export const TASTE_SCALE_TAU_BY_DIM: Partial<Record<keyof TasteProfile, number>> = {
+  sweet: 1.05,
+};
+
 export function toPerceptualScore(raw: number, tau = TASTE_SCALE_TAU): number {
   if (raw <= 0 || tau <= 0) return 0;
   return clampScore(10 * (1 - Math.exp(-raw / tau)));
@@ -55,7 +60,10 @@ export function toPerceptualScore(raw: number, tau = TASTE_SCALE_TAU): number {
 export function toPerceptualTaste(taste: TasteProfile, tau = TASTE_SCALE_TAU): TasteProfile {
   const out = emptyTaste();
   for (const dim of TASTE_DIMENSIONS) {
-    out[dim] = toPerceptualScore(taste[dim] ?? 0, tau);
+    out[dim] = toPerceptualScore(
+      taste[dim] ?? 0,
+      TASTE_SCALE_TAU_BY_DIM[dim] ?? tau,
+    );
   }
   return out;
 }

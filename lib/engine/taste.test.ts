@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TASTE_DIMENSIONS, capTaste, ceilingTaste, clampScore, emptyTaste, mergeTastes, toPerceptualScore } from "./taste";
+import { TASTE_DIMENSIONS, capTaste, ceilingTaste, clampScore, emptyTaste, mergeTastes, toPerceptualScore, toPerceptualTaste } from "./taste";
 
 describe("taste scores", () => {
   it("starts at zero on every dimension", () => {
@@ -40,6 +40,20 @@ describe("taste scores", () => {
   it("gets stronger when TASTE_SCALE_TAU is smaller", () => {
     const raw = 0.3;
     expect(toPerceptualScore(raw, 0.2)).toBeGreaterThan(toPerceptualScore(raw, 0.5));
+  });
+
+  it("maps sweetness a bit quieter than other dimensions at the same raw concentration", () => {
+    const raw = 0.3;
+    const taste = toPerceptualTaste({
+      sweet: raw,
+      sour: raw,
+      salty: raw,
+      spicy: raw,
+      umami: raw,
+      bitter: raw,
+    });
+    expect(taste.sweet).toBeLessThan(taste.salty);
+    expect(taste.sweet).toBeGreaterThan(taste.salty * 0.7);
   });
 
   it("takes the per-dimension max across ingredient vectors", () => {
