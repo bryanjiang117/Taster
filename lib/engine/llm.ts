@@ -148,6 +148,7 @@ Also set sweetIndex, sourIndex, saltyIndex, spicyIndex, umamiIndex, bitterIndex 
 Prefer composition numbers only as evidence, and only when they match what you taste. Do not treat grams of sugar, mg of sodium, mg of glutamate, or scoville as the score. Do not use scoville except for chili/capsaicin heat (not black pepper, white pepper, ginger, or wasabi). Only include pH when the food is perceptibly acidic (citrus, vinegar, tomato, yogurt). Typical spice/meat/vegetable pH 5–6.5 is not sour — omit pH then.
 If composition is a poor fit, decompose into typical recipe parts with volumeMl totaling 100.
 Last resort: estimate taste only.
+Keep the JSON compact. reasoning must be one short sentence.
 Anchors — 10 is the everyday ceiling: 10 sour = lemon or lime (juice), 10 salty = table salt, 10 sweet = sugar, 10 spicy = habanero, 10 umami = fish sauce, 10 bitter = unsweetened espresso. Do not hedge: lemon and lime are 10 sour, not 8 or 9.
 Calibration: orange ≈ 7–8 sweet (mild sour); onion ≈ 0–1 sweet (pungent, barely sweet); tomato ≈ 2–3 sweet, 4–5 umami, 3–5 sour; parmesan ≈ 6–7 salty, high umami; black pepper ≈ 2–3 spicy; jalapeño ≈ 5–6 spicy. Milder acids (tomato, yogurt, tamarind pulp) sit lower. Rice vinegar is milder than lemon; distilled vinegar can match it.
 Do not output a finished dish taste profile.`;

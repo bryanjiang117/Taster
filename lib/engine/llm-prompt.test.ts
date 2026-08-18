@@ -78,6 +78,12 @@ describe("ingredient lookup prompt", () => {
     expect(prompt).toMatch(/7/);
     expect(prompt.toLowerCase()).toContain("scoville");
   });
+
+  it("asks for compact JSON so a long reasoning field cannot truncate the payload", () => {
+    const prompt = ingredientLookupPrompt("black pepper");
+    expect(prompt.toLowerCase()).toContain("compact");
+    expect(prompt.toLowerCase()).toContain("short sentence");
+  });
 });
 
 describe("classify taste input prompt", () => {

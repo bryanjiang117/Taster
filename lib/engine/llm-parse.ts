@@ -87,5 +87,76 @@ export function recipeFromExtractJson(
 
 export function parseJsonText<T>(text: string): T {
   const trimmed = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  return JSON.parse(trimmed) as T;
+  const candidates = [trimmed];
+  const extracted = extractJsonValue(trimmed);
+  if (extracted && extracted !== trimmed) candidates.push(extracted);
+
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate) as T;
+    } catch (error) {
+      lastError = error;
+      const repaired = repairTruncatedJson(candidate);
+      if (repaired) {
+        try {
+          return JSON.parse(repaired) as T;
+        } catch {
+          // try the next candidate
+        }
+      }
+    }
+  }
+  throw lastError;
+}
+
+function extractJsonValue(text: string): string | undefined {
+  const startObject = text.indexOf("{");
+  const startArray = text.indexOf("[");
+  const start =
+    startObject < 0
+      ? startArray
+      : startArray < 0
+        ? startObject
+        : Math.min(startObject, startArray);
+  if (start < 0) return undefined;
+  return text.slice(start);
+}
+
+/** Close an unterminated string and any open braces/brackets so a truncated Gemini payload can still parse. */
+function repairTruncatedJson(text: string): string | undefined {
+  let inString = false;
+  let escape = false;
+  const stack: string[] = [];
+
+  for (const ch of text) {
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") stack.push("}");
+    else if (ch === "[") stack.push("]");
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+
+  if (!inString && stack.length === 0) return undefined;
+
+  let repaired = text;
+  if (escape) repaired = repaired.slice(0, -1);
+  if (inString) repaired += '"';
+  repaired = repaired.replace(/,\s*$/, "");
+  while (stack.length) repaired += stack.pop();
+  return repaired;
 }
