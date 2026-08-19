@@ -1,5 +1,5 @@
 import { tasteFromComposition, type CompositionData } from "./composition";
-import { weightedTasteFromIngredients } from "./concentration";
+import { combineRecipeTaste } from "./combine";
 import { dishConfidence, sourceConfidence } from "./confidence";
 import { normalizeIngredientName } from "./normalize";
 import { applyProcessingToTaste } from "./processing";
@@ -87,7 +87,7 @@ export async function resolveIngredient(
       children.push(await resolveIngredient(part.name, deps, depth + 1));
     }
 
-    const combined = weightedTasteFromIngredients(
+    const combined = combineRecipeTaste(
       lookup.parts.map((part, i) => ({
         volumeMl: part.volumeMl,
         taste: children[i]?.taste ?? emptyTaste(),

@@ -25,6 +25,11 @@ describe("ingredient name normalization", () => {
     expect(normalizeIngredientName("มะนาว")).not.toBe("");
   });
 
+  it("does not collapse hot chilies into generic chili", () => {
+    expect(normalizeIngredientName("bird's eye chili")).toBe("bird eye chili");
+    expect(normalizeIngredientName("thai chili")).toBe("thai chili");
+  });
+
   it("treats singular and plural English names as the same ingredient", () => {
     expect(normalizeIngredientName("kaffir lime leaves")).toBe(
       normalizeIngredientName("kaffir lime leaf"),

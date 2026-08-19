@@ -6,17 +6,18 @@ describe("test ingredient snapshot", () => {
     expect(loadSeedStore().get("salt")?.source).toBe("measured");
   });
 
-  it("treats lemon and lime as the sour ceiling", () => {
-    expect(loadSeedStore().get("lemon")?.taste.sour).toBe(10);
-    expect(loadSeedStore().get("lime")?.taste.sour).toBe(10);
+  it("scores citrus fruit below juice, and juice below a 10", () => {
+    expect(loadSeedStore().get("lemon")?.taste.sour).toBe(9);
+    expect(loadSeedStore().get("lime")?.taste.sour).toBe(9);
+    expect(loadSeedStore().get("lime juice")?.taste.sour).toBe(9.5);
   });
 
-  it("scores onion as barely sweet and black pepper as mild heat", () => {
+  it("scores onion as barely sweet and black pepper as almost no chili heat", () => {
     const onion = loadSeedStore().get("onion")?.taste.sweet ?? -1;
     const pepper = loadSeedStore().get("black pepper")?.taste.spicy ?? -1;
     expect(onion).toBeGreaterThanOrEqual(0);
     expect(onion).toBeLessThanOrEqual(1);
-    expect(pepper).toBeGreaterThanOrEqual(2);
-    expect(pepper).toBeLessThanOrEqual(3);
+    expect(pepper).toBeGreaterThanOrEqual(0.1);
+    expect(pepper).toBeLessThanOrEqual(0.3);
   });
 });

@@ -4,14 +4,14 @@ Agents: read this file first, then `docs/ai/architecture.md` and `docs/ai/taste-
 
 ## What this is
 
-Given a dish or singular ingredient, Taster builds a taste profile. Dishes search native-language recipes, build a representative recipe, resolve ingredients to taste vectors, and return a **deterministic** 0–10 profile (sweet, sour, salty, spicy, umami, bitter) plus confidence. Ingredients skip recipe search and use the ingredient catalog (resolve on miss). Brands and gibberish are rejected up front.
+Given a dish or singular ingredient, Taster builds a taste profile. Dishes search native-language recipes, resolve each ingredient (chemistry leaf, Gemini estimate if labs miss, or nested recipe), and return a **deterministic** 0–10 profile (sweet, sour, salty, spicy, umami, bitter) plus confidence. Brands and gibberish are rejected up front.
 
-The LLM must not invent the final numeric scores. Gemini is the research/parser layer (Search grounding + HTML parse, URL context if needed + JSON). Scoring is done in `lib/engine/`.
+The LLM must not invent the dish’s final numeric scores. Gemini is the research/parser layer (Search grounding + HTML parse, URL context if needed + JSON, leaf calibration). Scoring is done in `lib/engine/`. When no chemistry source matches a grocery name, Gemini may estimate that ingredient’s mouthful vector (`source: "llm"`).
 
 ## Run
 
 ```bash
-cp .env.example .env   # GEMINI_API_KEY, TURSO_DATABASE_URL, TURSO_AUTH_TOKEN
+cp .env.example .env   # GEMINI_API_KEY, TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, USDA_API_KEY
 npm install
 npm test
 npm run dev            # http://localhost:3000
@@ -21,24 +21,30 @@ Restart the dev server after changing `.env`. Never commit `.env`. The live cata
 
 ## Invariants
 
-- Final UI scores for dishes are **perceptual**, not raw concentration. Pipeline: `weightedTasteFromIngredients` → `toPerceptualTaste` (`TASTE_SCALE_TAU` in `lib/engine/taste.ts`, with optional per-dimension overrides in `TASTE_SCALE_TAU_BY_DIM`) → `capTaste` at the strongest ingredient on each dimension → `polarizeTaste` (`TASTE_POLARIZE_POWER`) so a score is judged against the loudest of the 6: a 6 next to a 7 barely moves, a 2 next to a 7 becomes ~1. Smaller tau = louder. Lower polarize power = more contrast vs the peak. A dish cannot score more bitter/sour/etc. than its most bitter/sour ingredient. Pure ingredients return the catalog intrinsic 0–10 vector (no dilution).
-- Classify input first (dish / ingredient / reject). Reject brands and random text. Ingredients never touch the dish cache; they always use `IngredientStore` (resolve → persist on miss) with progress logs.
-- Unknown ingredients: cache → composition → decomposition (max depth 3) → LLM estimate. New vectors go to Turso as soon as each one resolves (`INSERT OR IGNORE` on normalized name), so a timed-out or aborted taste still keeps ingredients that finished. Existing catalog rows are never overwritten. Each request reloads Turso into `IngredientStore`. Catalog 0–10 is how a mouthful tastes. Sugar, sodium, and glutamate use a perceptual curve (orange ~9g sugar ≈ 7 sweet; parmesan ~1500mg sodium ≈ 6+ salty; tomato glutamate is umami, not a sliver of kombu). A `*Index` on every dimension overrides chemistry. Lemon and lime are the sour ceiling (10). LLM guesses use those anchors plus orange/onion/pepper/parmesan/tomato so lab numbers do not replace perception.
-- Translate ingredient names to English before scoring or showing them in the UI. Gemini `canonicalizeIngredientNames` takes the extracted names, the ingredient catalog, and the dish's culinary origin (cuisine, country, language). It returns singular grocery names, reusing a catalog row when it is the same food, and must prefer the cuisine's food over a dictionary false friend (e.g. ceviche `limón` → lime).
+- Dish scores mix in `combineRecipeTaste`: recipe-relative loudness for non-spicy dims (peer scores stay; traces quiet as `score × √(score/peak)`), then linear volume×score when loud seasonings cover <2.5% of the dish, else p-norm punch-through (p=4), linear gain (1.75×). **Spicy** skips relative loudness and always p-norms. Cap at strongest in-ingredient leaf. Bland food stays low. Pure ingredients return the catalog 0–10 vector (no dilution). Spicy is chili heat: black pepper ≈ 0.2, freshly cracked ≈ 0.5 via `mix.scale`, Thai chili = 10. A 10 is the most intense culinary form (salt, sugar, Thai chili); lemon/lime fruit ≈ 9 sour, juice ≈ 9.5.
+- Classify input first (dish / ingredient / reject). Reject brands and random text. **Ingredient Turso always wins** for that normalized name, even if classify says dish and even if Reuse cache is off. Reuse cache only gates the **dish** average for what the user typed.
+- Unknown names: try chemistry (FAO/INFOODS first, then UmamiDB / Phenol-Explorer / Dr. Duke / FooDB / USDA). One Gemini shortlist check must confirm the food. Deterministic compound mixer, then Gemini may calibrate dimensions that have evidence. If no source matched that **exact** grocery name, Gemini `estimateLeafTaste` scores a mouthful (`source: "llm"`, low confidence). Do not collapse names (thai chili ≠ chili; soft shell crab ≠ crab). If estimate is missing or fails, run the same full recipe search and persist the mix as an **ingredient**. Nested recipe-ingredients get that same search. Existing catalog rows are never overwritten (`INSERT OR IGNORE`).
+- Translate ingredient names to English before scoring or showing them in the UI. Gemini `canonicalizeIngredientNames` takes the extracted names, the ingredient catalog, and the dish's culinary origin. Recipe extract also returns prep mix knobs (`mix.intensity` / `mix.scale`) using culinary common sense — no prep enum in code.
 - Prefer several recipes; start with 3 and fetch up to 7 when those 3 disagree on flavor. Recipe collection stops at 30s (`COLLECT_TIME_LIMIT_MS`) and scores whatever was found (even 1–2). Confidence falls when recipes disagree.
 - Recipe extract tags each ingredient `in` (cooked into the dish) or `out` (side/serving). Only `in` affects scores. Out-only items stay in the ingredient list quieter and appear as an “Often served with” list under the scores, with primary flavors.
 - Search in the dish’s origin language (authentic). **Typed language** mode searches in whatever language the user typed (internationalized). Both write to the same dish cache row.
-- Shared dish cache in Turso `dishes`: LLM match → reuse stored average when that setting is on; otherwise run the pipeline and fold into the running mean unless the 6-D Euclidean distance is > 4. Cache hits still increment `timesTasted`.
-- Global taste count in Turso `stats` (`taste_count`): +1 on every successful profile the user gets back (dish, ingredient, cache hit). Rejects, errors, and Stop do not count. Shown under the lede; ticks up when `done` arrives.
+- Shared dish cache in Turso `dishes`: LLM match → reuse stored average when that setting is on; otherwise run the pipeline and fold into the running mean unless the 6-D Euclidean distance is > 4. Cache hits still increment `timesTasted`. Nested recipe tastes do not read or write `dishes`.
+- Global taste count in Turso `stats` (`taste_count`): +1 on every successful profile the user gets back (dish, ingredient, cache hit). Rejects, errors, and Stop do not count. Shown at the top as **Total tastings**; ticks up when `done` arrives.
 - When changing scoring math, update tests in `lib/engine/*.test.ts` first.
 - Keep the UI to: dish name in, profile out, plus the two mode toggles and Stop while tasting. Do not add extra screens unless asked.
 
 ## Layout
 
 - `lib/engine/` — taste engine (pure + injectable I/O)
-- `lib/engine/catalog.ts` — Turso ingredient load/persist (`loadProductionStore`, `persistProductionLearned`)
-- `lib/engine/dish-catalog.ts` — Turso dish cache (`loadProductionDishStore`, `persistProductionDish`)
+- `lib/engine/chemistry.ts` — compound mixer
+- `lib/engine/fct.ts` / `umamidb.ts` / `phenol.ts` / `duke.ts` / `usda.ts` / `foodb.ts` — FAO/INFOODS dumps, UmamiDB, Phenol-Explorer, Dr. Duke, USDA FoodData Central, FooDB
+- `lib/engine/leaf.ts` — chemistry leaf scoring
+- `lib/engine/combine.ts` — recipe mix (loudness, p-norm, prep, cap)
+- `lib/engine/catalog.ts` — Turso ingredient load/persist
+- `lib/engine/dish-catalog.ts` — Turso dish cache
 - `lib/engine/stats.ts` — Turso global taste count
 - `lib/engine/testdata/ingredients.json` — offline snapshot for unit tests only
+- `lib/engine/testdata/foodb-taste.json` — FooDB 2020 public dump, taste compounds only
+- `lib/engine/testdata/fct-taste.json` / `umami-taste.json` / `phenol-taste.json` / `duke-taste.json` — derived taste extracts (FAO/INFOODS + Japan + CIQUAL; UIC umami snapshot; Phenol-Explorer polyphenols; Dr. Duke ppm). Rebuild with `scripts/extract-*-taste.py`; do not commit raw Excel.
 - `app/` — Next.js UI, 5-line SSE progress log, `POST /api/profile`, `GET /api/stats`
 - `docs/ai/` — longer design notes for agents (catalog details in `architecture.md`)

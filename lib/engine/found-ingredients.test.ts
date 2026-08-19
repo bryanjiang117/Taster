@@ -137,6 +137,24 @@ describe("foundIngredientsFromRecipes", () => {
     expect(found.find((item) => item.name === "lemon")?.out).toBe(false);
   });
 
+  it("shows salty and umami on fish sauce", () => {
+    const store = new IngredientStore([
+      {
+        ingredient: "fish sauce",
+        taste: { sweet: 1, sour: 1, salty: 9, spicy: 0, umami: 9, bitter: 0.5 },
+        derivedFrom: ["anchovy", "salt"],
+        processing: ["fermentation"],
+        confidence: 0.9,
+        source: "measured",
+      },
+    ]);
+    const found = foundIngredientsFromRecipes(
+      [{ ingredients: [{ name: "fish sauce", volumeMl: 15 }] }],
+      store,
+    );
+    expect(found[0]?.flavors).toEqual(["salty", "umami"]);
+  });
+
   it("builds a short footnote with primary flavors for out-only ingredients", () => {
     const store = new IngredientStore([
       {

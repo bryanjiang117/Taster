@@ -3,6 +3,7 @@ import { profileDish } from "./pipeline";
 import type { LlmClient } from "./llm";
 import type { PageClient, SearchClient } from "./search";
 import { IngredientStore } from "./store";
+import { stubChemistryClients } from "./test-foods";
 import type { TasteProfile } from "./types";
 
 const limeTaste: TasteProfile = {
@@ -103,10 +104,10 @@ describe("taste input classification", () => {
       expect.objectContaining({ name: "lime", volumeMl: 100 }),
     ]);
     expect(events.some((m) => /ingredient/i.test(m))).toBe(true);
-    expect(events.some((m) => /catalog|cached taste/i.test(m))).toBe(true);
+    expect(events.some((m) => /catalog|cached taste|treating/i.test(m))).toBe(true);
   });
 
-  it("resolves an unknown ingredient via lookup and persists it", async () => {
+  it("resolves an unknown ingredient via chemistry and persists it", async () => {
     const persistLearned = vi.fn(async () => 1);
     const llm: LlmClient = {
       classifyTasteInput: async () => ({ kind: "ingredient", name: "yuzu" }),
@@ -114,12 +115,10 @@ describe("taste input classification", () => {
         throw new Error("identifyDish should not run");
       },
       extractRecipe: async () => null,
-      lookupIngredient: async () => ({
-        kind: "llm",
-        taste: { ...limeTaste, sour: 8 },
-      }),
+      isCommonIngredient: async () => true,
     };
     const events: string[] = [];
+    const chemistry = stubChemistryClients();
 
     const result = await profileDish("yuzu", {
       llm,
@@ -127,6 +126,8 @@ describe("taste input classification", () => {
       pages: silentPages(),
       store: new IngredientStore([]),
       persistLearned,
+      usda: chemistry.usda,
+      foodb: chemistry.foodb,
       onProgress: (event) => {
         if (event.type === "step") events.push(event.message);
       },
@@ -134,9 +135,41 @@ describe("taste input classification", () => {
 
     expect(result.recipesAnalyzed).toBe(0);
     expect(result.fromCache).toBe(false);
-    expect(result.taste.sour).toBe(8);
+    expect(result.taste.salty).toBeGreaterThan(4);
     expect(persistLearned).toHaveBeenCalled();
-    expect(events.some((m) => /resolving|unknown ingredient/i.test(m))).toBe(true);
+    expect(events.some((m) => /chemistry|resolving|scoring/i.test(m))).toBe(true);
     expect(events.some((m) => /saving|catalog/i.test(m))).toBe(true);
+  });
+
+  it("uses an ingredient catalog hit even when classify says dish", async () => {
+    const search = vi.fn(async () => {
+      throw new Error("search should not run");
+    });
+    const result = await profileDish("lime", {
+      llm: {
+        classifyTasteInput: async () => ({ kind: "dish" }),
+        identifyDish: async () => {
+          throw new Error("identifyDish should not run");
+        },
+        extractRecipe: async () => null,
+      },
+      search: { search },
+      pages: silentPages(),
+      store: new IngredientStore([
+        {
+          ingredient: "lime",
+          taste: limeTaste,
+          derivedFrom: [],
+          processing: [],
+          confidence: 0.9,
+          source: "measured",
+        },
+      ]),
+      useCache: false,
+    });
+    expect(search).not.toHaveBeenCalled();
+    expect(result.fromCache).toBe(true);
+    expect(result.taste.sour).toBe(9);
+    expect(result.recipesAnalyzed).toBe(0);
   });
 });

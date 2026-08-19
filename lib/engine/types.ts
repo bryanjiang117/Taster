@@ -1,3 +1,5 @@
+import type { ChemistrySourceId } from "./identity";
+
 export const TASTE_DIMENSIONS = [
   "sweet",
   "sour",
@@ -37,11 +39,20 @@ export type ProcessEffect = {
 /** Whether the ingredient is cooked/mixed into the dish (`in`) or only a side/serving item (`out`). */
 export type IngredientRole = "in" | "out";
 
+/** Prep-aware mix knobs from the recipe extract. Defaults are identity. */
+export type IngredientMix = {
+  /** 1 = volume share as-is. 0 = none of this ingredient tastes in the bowl. */
+  intensity?: number;
+  /** Per-dimension multipliers from how it was prepared. */
+  scale?: Partial<TasteProfile>;
+};
+
 export type IngredientQuantity = {
   name: string;
   volumeMl: number;
   /** Defaults to `in` when omitted (legacy extracts). */
   role?: IngredientRole;
+  mix?: IngredientMix;
 };
 
 export type ResolvedIngredient = {
@@ -51,6 +62,8 @@ export type ResolvedIngredient = {
   processing: string[];
   confidence: number;
   source: ConfidenceSource;
+  /** Lab databases that supplied compound data, when resolved via chemistry. */
+  measuredFrom?: ChemistrySourceId[];
   reasoning?: string;
 };
 

@@ -3,7 +3,7 @@ import { quantityToMl } from "./quantity";
 import { recipeFromExtractJson } from "./llm-parse";
 import { buildRepresentativeRecipe } from "./representative";
 import { weightedTasteFromIngredients } from "./concentration";
-import { toPerceptualTaste, roundTaste } from "./taste";
+import { roundTaste } from "./taste";
 
 describe("quantity conversion", () => {
   it("converts kitchen units to milliliters", () => {
@@ -91,7 +91,7 @@ describe("jerk-like volume shares", () => {
       })),
       finalVolumeMl,
     );
-    const sweet = roundTaste(toPerceptualTaste(scored)).sweet;
+    const sweet = roundTaste(scored).sweet;
     expect(sweet).toBeLessThan(4);
   });
 });

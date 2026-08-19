@@ -5,8 +5,8 @@ import {
   type SearchMode,
 } from "./dish-cache";
 import { DishStore } from "./dish-store";
-import { dishConfidence } from "./confidence";
-import { weightedTasteFromIngredients } from "./concentration";
+import { dishConfidence, sourceConfidence } from "./confidence";
+import { combineRecipeTaste } from "./combine";
 import { applyEnglishNames, uniqueIngredientNames } from "./english-names";
 import {
   matchesDish,
@@ -32,7 +32,13 @@ import {
   tasteOfRecipe,
 } from "./recipe-sample";
 import { expandSearchQueries, MIN_SEARCH_POOL } from "./search-queries";
-import { resolveIngredient, type ResolveDeps, type UnknownLookup } from "./resolve";
+import { tryChemistryLeaf } from "./leaf";
+import { emptyFoodbClient, FoodbDumpClient, type FoodbClient } from "./foodb";
+import { emptyFctClient, FctDumpClient, type FctClient } from "./fct";
+import { emptyDukeClient, DukeDumpClient, type DukeClient } from "./duke";
+import { emptyPhenolClient, PhenolDumpClient, type PhenolClient } from "./phenol";
+import { emptyUmamiClient, UmamiDumpClient, type UmamiClient } from "./umamidb";
+import { emptyUsdaClient, UsdaFdcClient, type UsdaClient } from "./usda";
 import {
   culinaryContextFromOrigin,
   type CulinaryContext,
@@ -50,12 +56,9 @@ import {
 import { loadProductionStore } from "./catalog";
 import { IngredientStore } from "./store";
 import {
-  capTaste,
-  ceilingTaste,
   clampTaste,
-  polarizeTaste,
+  emptyTaste,
   roundTaste,
-  toPerceptualTaste,
   TASTE_DIMENSIONS,
 } from "./taste";
 import {
@@ -106,9 +109,62 @@ export type PipelineDeps = {
   ) => Promise<number | void> | number | void;
   persistDish?: (record: CachedDish) => Promise<number | void> | number | void;
   signal?: AbortSignal;
+  usda?: UsdaClient;
+  foodb?: FoodbClient;
+  fct?: FctClient;
+  umami?: UmamiClient;
+  phenol?: PhenolClient;
+  duke?: DukeClient;
 };
 
 export const COLLECT_TIME_LIMIT_MS = 30_000;
+
+type TasteRun = {
+  store: IngredientStore;
+  knownAtStart: Set<string>;
+  learnedFlush: LearnedFlush;
+  tasting: Set<string>;
+  depth: number;
+  context?: CulinaryContext;
+};
+
+function wiredDeps(deps: PipelineDeps): PipelineDeps {
+  return {
+    ...deps,
+    usda:
+      deps.usda ??
+      (process.env.USDA_API_KEY ? new UsdaFdcClient() : emptyUsdaClient),
+    foodb: deps.foodb ?? new FoodbDumpClient(),
+    fct: deps.fct ?? new FctDumpClient(),
+    umami: deps.umami ?? new UmamiDumpClient(),
+    phenol: deps.phenol ?? new PhenolDumpClient(),
+    duke: deps.duke ?? new DukeDumpClient(),
+  };
+}
+
+function usdaClient(deps: PipelineDeps): UsdaClient {
+  return deps.usda ?? emptyUsdaClient;
+}
+
+function foodbClient(deps: PipelineDeps): FoodbClient {
+  return deps.foodb ?? emptyFoodbClient;
+}
+
+function fctClient(deps: PipelineDeps): FctClient {
+  return deps.fct ?? emptyFctClient;
+}
+
+function umamiClient(deps: PipelineDeps): UmamiClient {
+  return deps.umami ?? emptyUmamiClient;
+}
+
+function phenolClient(deps: PipelineDeps): PhenolClient {
+  return deps.phenol ?? emptyPhenolClient;
+}
+
+function dukeClient(deps: PipelineDeps): DukeClient {
+  return deps.duke ?? emptyDukeClient;
+}
 
 export async function profileDish(
   dish: string,
@@ -116,12 +172,17 @@ export async function profileDish(
 ): Promise<DishProfileResult> {
   const emit = deps.onProgress;
   throwIfAborted(deps.signal);
+  deps = wiredDeps(deps);
   const store = deps.store ?? (await loadProductionStore());
   const knownAtStart = new Set(store.all().map((item) => item.ingredient));
   const learnedFlush = createLearnedFlush(knownAtStart, deps.persistLearned);
-  const now = deps.now ?? Date.now;
-  const started = now();
-  const searchMode = deps.searchMode ?? "native";
+  const run: TasteRun = {
+    store,
+    knownAtStart,
+    learnedFlush,
+    tasting: new Set(),
+    depth: 0,
+  };
 
   const classification = await classifyInput(dish, deps, emit);
   if (classification.kind === "reject") {
@@ -131,16 +192,18 @@ export async function profileDish(
         : "Enter a dish or ingredient — not a brand or random text.",
     );
   }
+
+  const ingredientName = normalizeIngredientName(
+    classification.kind === "ingredient" ? classification.name : dish,
+  );
+  const cachedIngredient =
+    store.get(ingredientName) ?? store.get(normalizeIngredientName(dish));
+  if (cachedIngredient) {
+    return profileCachedIngredient(dish, cachedIngredient, true, emit, deps);
+  }
+
   if (classification.kind === "ingredient") {
-    return profileIngredient(
-      dish,
-      classification.name,
-      store,
-      knownAtStart,
-      learnedFlush,
-      deps,
-      emit,
-    );
+    return profileIngredient(dish, ingredientName, run, deps, emit);
   }
 
   const matched = await matchExistingDish(dish, deps, emit);
@@ -161,36 +224,57 @@ export async function profileDish(
     return resultFromCachedDish(dish, updated, true);
   }
 
+  const profile = await tasteFromRecipes(dish, run, deps, emit);
+  const cached = await persistDishProfile(
+    dish,
+    profile,
+    profile._recipes ?? [],
+    store,
+    matched,
+    deps,
+    emit,
+  );
+  if (cached) profile.timesTasted = cached.timesTasted;
+  delete profile._recipes;
+  return profile;
+}
+
+type DishProfileInternal = DishProfileResult & { _recipes?: Recipe[] };
+
+async function tasteFromRecipes(
+  query: string,
+  run: TasteRun,
+  deps: PipelineDeps,
+  emit: ProgressSink | undefined,
+): Promise<DishProfileInternal> {
+  const searchMode = deps.searchMode ?? "native";
+  const now = deps.now ?? Date.now;
+  const started = now();
   const origin = await runLoggedStep(
     emit,
     "origin",
     searchMode === "typed"
-      ? `Identifying culinary origin of "${dish}" (searching in the typed language)`
-      : `Identifying culinary origin of "${dish}"`,
-    () => deps.llm.identifyDish(dish, { searchMode }),
+      ? `Identifying culinary origin of "${query}" (searching in the typed language)`
+      : `Identifying culinary origin of "${query}"`,
+    () => deps.llm.identifyDish(query, { searchMode }),
     deps.signal,
   );
+  run.context = culinaryContextFromOrigin(origin);
 
-  const collected = await collectRecipes(
-    origin,
-    deps,
-    store,
-    started,
-    learnedFlush.onLearned,
-  );
+  const collected = await collectRecipes(origin, deps, run, started, false);
 
   if (collected.recipes.length === 0) {
-    throw new Error(emptyRecipeMessage(dish, collected));
+    throw new Error(emptyRecipeMessage(query, collected));
   }
 
   const recipes = await matchRecipeIngredients(
     collected.recipes,
-    store,
+    run.store,
     deps,
     culinaryContextFromOrigin(origin),
   );
 
-  await resolveMissingIngredients(recipes, store, deps, learnedFlush.onLearned);
+  await resolveMissingIngredients(recipes, run, deps, true);
 
   const representative = await runLoggedStep(
     emit,
@@ -219,91 +303,84 @@ export async function profileDish(
   const resolved: ResolvedIngredient[] = [];
   for (const ingredient of representative.built.ingredients) {
     if (!ingredient.name) continue;
-    const known = store.has(ingredient.name);
-    resolved.push(
-      await runLoggedStep(
-        emit,
-        `resolve:${ingredient.name}`,
-        known
-          ? `Loading cached taste vector for ${ingredient.name}`
-          : `Resolving unknown ingredient ${ingredient.name}`,
-        () =>
-          resolveIngredient(ingredient.name, {
-            store,
-            maxDepth: MAX_RESOLUTION_DEPTH,
-            lookupUnknown: (name) => deps.llm.lookupIngredient(name),
-            onLearned: learnedFlush.onLearned,
-          }),
-        deps.signal,
-      ),
+    const known = run.store.has(ingredient.name);
+    const item = await runLoggedStep(
+      emit,
+      `resolve:${ingredient.name}`,
+      known
+        ? `Loading cached taste vector for ${ingredient.name}`
+        : `Resolving unknown ingredient ${ingredient.name}`,
+      () => resolveFood(ingredient.name, run, deps, true),
+      deps.signal,
     );
+    if (item) resolved.push(item);
     emit?.({
       type: "ingredients",
-      items: foundIngredientsFromRecipes(recipes, store),
+      items: foundIngredientsFromRecipes(recipes, run.store),
     });
   }
+
+  const byName = new Map(resolved.map((item) => [item.ingredient, item]));
+  const mixable = representative.built.ingredients.flatMap((ingredient) => {
+    const item = byName.get(normalizeIngredientName(ingredient.name));
+    if (!item) return [];
+    return [
+      {
+        volumeMl: ingredient.volumeMl,
+        taste: item.taste,
+        role: ingredient.role,
+        mix: ingredient.mix,
+      },
+    ];
+  });
 
   const taste = await runLoggedStep(
     emit,
     "score",
-    "Computing taste from effective concentration, then mapping onto a 0–10 perceptual scale",
+    "Computing taste from ingredient amounts, prep, and volume",
     async () => {
-      let scored = weightedTasteFromIngredients(
-        representative.built.ingredients.map((ingredient, i) => ({
-          volumeMl: ingredient.volumeMl,
-          taste: resolved[i]!.taste,
-        })),
+      const scored = combineRecipeTaste(
+        mixable,
         representative.built.finalVolumeMl,
       );
-      scored = applySolubleRetention(
-        scored,
-        representative.volumeInfo.solubleRetention,
-      );
-      const perceptual = toPerceptualTaste(scored);
-      const capped = capTaste(
-        perceptual,
-        ceilingTaste(resolved.map((ingredient) => ingredient.taste)),
-      );
-      return polarizeTaste(capped);
+      return applySolubleRetention(scored, representative.volumeInfo.solubleRetention);
     },
     deps.signal,
   );
 
-  const contributions = representative.built.ingredients.map(
-    (ingredient, i) => ({
-      confidence: resolved[i]!.confidence,
-      contribution: TASTE_DIMENSIONS.reduce(
-        (sum, dim) =>
-          sum +
-          resolved[i]!.taste[dim] *
-            (ingredient.volumeMl / representative.built.finalVolumeMl),
-        0,
-      ),
-    }),
-  );
+  const contributions = mixable.map((ingredient, i) => ({
+    confidence: resolved[i]?.confidence ?? 0,
+    contribution: TASTE_DIMENSIONS.reduce(
+      (sum, dim) =>
+        sum +
+        ingredient.taste[dim] *
+          (ingredient.volumeMl / representative.built.finalVolumeMl),
+      0,
+    ),
+  }));
 
   const inconsistency = flavorInconsistency(
-    recipes.map((recipe) => tasteOfRecipe(recipe, store)),
+    recipes.map((recipe) => tasteOfRecipe(recipe, run.store)),
   );
 
-  const learned = store
+  const learned = run.store
     .all()
-    .filter((item) => !knownAtStart.has(item.ingredient));
+    .filter((item) => !run.knownAtStart.has(item.ingredient));
   if (learned.length && deps.persistLearned) {
     await runLoggedStep(
       emit,
       "persist-seed",
       `Saving ${learned.length} new ingredient${learned.length === 1 ? "" : "s"} to the ingredient catalog`,
-      () => learnedFlush.flushRemaining(store),
+      () => run.learnedFlush.flushRemaining(run.store),
       deps.signal,
     );
   }
 
-  const foundItems = foundIngredientsFromRecipes(recipes, store);
+  const foundItems = foundIngredientsFromRecipes(recipes, run.store);
   const footnote = accompanimentFootnote(foundItems);
 
-  const profile: DishProfileResult = {
-    dish,
+  return {
+    dish: query,
     origin,
     taste: roundTaste(taste),
     confidence: round2(
@@ -320,20 +397,8 @@ export async function profileDish(
     },
     provenance: resolved,
     footnote,
+    _recipes: recipes,
   };
-
-  const cached = await persistDishProfile(
-    dish,
-    profile,
-    recipes,
-    store,
-    matched,
-    deps,
-    emit,
-  );
-  if (cached) profile.timesTasted = cached.timesTasted;
-
-  return profile;
 }
 
 type RecipeCollection = {
@@ -347,9 +412,9 @@ type RecipeCollection = {
 async function collectRecipes(
   origin: DishOrigin,
   deps: PipelineDeps,
-  store: IngredientStore,
+  run: TasteRun,
   started: number,
-  onLearned?: ResolveDeps["onLearned"],
+  allowNested: boolean,
 ): Promise<RecipeCollection> {
   const identity: DishIdentity = {
     dish: origin.dish,
@@ -412,16 +477,16 @@ async function collectRecipes(
     if (recipes.length < minRecipes) return;
     const aligned = await matchRecipeIngredients(
       recipes,
-      store,
+      run.store,
       deps,
       culinaryContextFromOrigin(origin),
     );
     if (aligned !== recipes) {
       recipes.splice(0, recipes.length, ...aligned);
     }
-    await resolveMissingIngredients(recipes, store, deps, onLearned);
+    await resolveMissingIngredients(recipes, run, deps, allowNested);
     const inconsistency = flavorInconsistency(
-      recipes.map((recipe) => tasteOfRecipe(recipe, store)),
+      recipes.map((recipe) => tasteOfRecipe(recipe, run.store)),
     );
     const needed = Math.min(
       maxRecipes,
@@ -482,7 +547,7 @@ async function collectRecipes(
     }
     const english = await translateRecipe(
       recipe,
-      store,
+      run.store,
       deps,
       culinaryContextFromOrigin(origin),
     );
@@ -490,7 +555,7 @@ async function collectRecipes(
     recipes.push(english);
     deps.onProgress?.({
       type: "ingredients",
-      items: foundIngredientsFromRecipes(recipes, store),
+      items: foundIngredientsFromRecipes(recipes, run.store),
     });
   };
 
@@ -754,32 +819,136 @@ async function translateRecipe(
 
 async function resolveMissingIngredients(
   recipes: Recipe[],
-  store: IngredientStore,
+  run: TasteRun,
   deps: PipelineDeps,
-  onLearned?: ResolveDeps["onLearned"],
+  allowNested: boolean,
 ): Promise<void> {
   const missing = uniqueIngredientNames(recipes).filter(
-    (name) => name && !store.has(name),
+    (name) => name && !run.store.has(name),
   );
   for (const name of missing) {
     await runLoggedStep(
       deps.onProgress,
       `resolve:${name}`,
       `Resolving unknown ingredient ${name}`,
-      () =>
-        resolveIngredient(name, {
-          store,
-          maxDepth: MAX_RESOLUTION_DEPTH,
-          lookupUnknown: (n) => deps.llm.lookupIngredient(n),
-          onLearned,
-        }),
+      () => resolveFood(name, run, deps, allowNested),
       deps.signal,
     );
     deps.onProgress?.({
       type: "ingredients",
-      items: foundIngredientsFromRecipes(recipes, store),
+      items: foundIngredientsFromRecipes(recipes, run.store),
     });
   }
+}
+
+async function resolveFood(
+  name: string,
+  run: TasteRun,
+  deps: PipelineDeps,
+  allowNested: boolean,
+): Promise<ResolvedIngredient | null> {
+  const canonical = normalizeIngredientName(name);
+  const cached = run.store.get(canonical);
+  if (cached) return cached;
+  if (run.tasting.has(canonical)) return null;
+  if (run.depth >= MAX_RESOLUTION_DEPTH) return null;
+
+  run.tasting.add(canonical);
+  try {
+    const leaf = await tryChemistryLeaf(canonical, {
+      store: run.store,
+      usda: usdaClient(deps),
+      foodb: foodbClient(deps),
+      fct: fctClient(deps),
+      umami: umamiClient(deps),
+      phenol: phenolClient(deps),
+      duke: dukeClient(deps),
+      origin: run.context,
+      confirmFoodShortlists: deps.llm.confirmFoodShortlists
+        ? (query, shortlists) =>
+            deps.llm.confirmFoodShortlists!(query, shortlists, run.context)
+        : undefined,
+      calibrateLeaf: deps.llm.calibrateLeafTaste
+        ? (n, draft) => deps.llm.calibrateLeafTaste!(n, draft)
+        : undefined,
+    });
+    if (leaf) {
+      run.store.put(leaf);
+      await run.learnedFlush.onLearned(leaf);
+      return leaf;
+    }
+    const estimated = await estimateGroceryLeaf(canonical, deps);
+    if (estimated) {
+      run.store.put(estimated);
+      await run.learnedFlush.onLearned(estimated);
+      return estimated;
+    }
+    if (!allowNested) return null;
+
+    const nestedRun: TasteRun = {
+      ...run,
+      depth: run.depth + 1,
+    };
+    try {
+      const nested = await tasteFromRecipes(
+        canonical,
+        nestedRun,
+        deps,
+        deps.onProgress,
+      );
+      const derivedFrom = nested.representative.ingredients.map((item) => item.name);
+      if (!nestedRecipePlausible(canonical, derivedFrom)) return null;
+      const resolved: ResolvedIngredient = {
+        ingredient: canonical,
+        taste: nested.taste,
+        derivedFrom,
+        processing: ["recipe"],
+        confidence: nested.confidence,
+        source: "recipe",
+        reasoning: `Tasted from ${nested.recipesAnalyzed} recipe${nested.recipesAnalyzed === 1 ? "" : "s"}`,
+      };
+      run.store.put(resolved);
+      await run.learnedFlush.onLearned(resolved);
+      return resolved;
+    } catch (error) {
+      rethrowIfAborted(error);
+      return null;
+    }
+  } finally {
+    run.tasting.delete(canonical);
+  }
+}
+
+async function estimateGroceryLeaf(
+  name: string,
+  deps: PipelineDeps,
+): Promise<ResolvedIngredient | null> {
+  if (!deps.llm.estimateLeafTaste) return null;
+  try {
+    const overlay = await deps.llm.estimateLeafTaste(name);
+    if (!overlay) return null;
+    return {
+      ingredient: name,
+      taste: clampTaste({ ...emptyTaste(), ...overlay }),
+      derivedFrom: [],
+      processing: [],
+      confidence: sourceConfidence("llm"),
+      source: "llm",
+      reasoning: "Estimated without a chemistry match",
+    };
+  } catch (error) {
+    rethrowIfAborted(error);
+    return null;
+  }
+}
+
+function nestedRecipePlausible(ingredient: string, derivedFrom: string[]): boolean {
+  const query = normalizeIngredientName(ingredient);
+  if (!query || !derivedFrom.length) return false;
+  const tokens = query.split(" ").filter((token) => token.length >= 3);
+  if (!tokens.length) return true;
+  const hay = derivedFrom.map((name) => normalizeIngredientName(name)).join(" ");
+  return tokens.some((token) => hay.includes(token));
 }
 
 function commonProcesses(recipes: Recipe[]): ProcessEffect[] {
@@ -841,46 +1010,89 @@ async function classifyInput(
   );
 }
 
+async function profileCachedIngredient(
+  query: string,
+  resolved: ResolvedIngredient,
+  fromCache: boolean,
+  emit: ProgressSink | undefined,
+  deps: PipelineDeps,
+): Promise<DishProfileResult> {
+  await runLoggedStep(
+    emit,
+    "ingredient",
+    `Treating "${resolved.ingredient}" as an ingredient`,
+    async () => undefined,
+    deps.signal,
+  );
+  return finishIngredientProfile(query, resolved, fromCache, emit, deps);
+}
+
 async function profileIngredient(
   query: string,
   classifiedName: string,
-  store: IngredientStore,
-  knownAtStart: Set<string>,
-  learnedFlush: LearnedFlush,
+  run: TasteRun,
   deps: PipelineDeps,
   emit: ProgressSink | undefined,
 ): Promise<DishProfileResult> {
   const name = normalizeIngredientName(classifiedName || query);
+  run.context = {
+    dish: name,
+    nativeName: name,
+  };
   await runLoggedStep(
     emit,
     "ingredient",
-    `Treating "${name}" as an ingredient (no recipe search)`,
+    `Treating "${name}" as an ingredient`,
     async () => undefined,
     deps.signal,
   );
 
-  const fromCache = store.has(name);
+  const cached = run.store.get(name);
+  if (cached) {
+    return finishIngredientProfile(query, cached, true, emit, deps);
+  }
+
   const resolved = await runLoggedStep(
     emit,
     `resolve:${name}`,
-    fromCache
-      ? `Loading cached taste vector for ${name} from the ingredient catalog`
-      : `Resolving unknown ingredient ${name}`,
-    () =>
-      resolveIngredient(name, {
-        store,
-        maxDepth: MAX_RESOLUTION_DEPTH,
-        lookupUnknown: (lookupName) => deps.llm.lookupIngredient(lookupName),
-        onLearned: learnedFlush.onLearned,
-      }),
+    `Scoring ${name} from food chemistry`,
+    () => resolveFood(name, run, deps, true),
     deps.signal,
   );
+  if (!resolved) {
+    throw new Error(
+      `Could not taste "${name}" from chemistry or a recipe. Try a more specific food name.`,
+    );
+  }
 
+  const learned = run.store
+    .all()
+    .filter((item) => !run.knownAtStart.has(item.ingredient));
+  if (learned.length && deps.persistLearned) {
+    await runLoggedStep(
+      emit,
+      "persist-seed",
+      `Saving ${learned.length} new ingredient${learned.length === 1 ? "" : "s"} to the ingredient catalog`,
+      () => run.learnedFlush.flushRemaining(run.store),
+      deps.signal,
+    );
+  }
+
+  return finishIngredientProfile(query, resolved, false, emit, deps);
+}
+
+function finishIngredientProfile(
+  query: string,
+  resolved: ResolvedIngredient,
+  fromCache: boolean,
+  emit: ProgressSink | undefined,
+  deps: PipelineDeps,
+): DishProfileResult {
   emit?.({
     type: "ingredients",
     items: [
       {
-        name,
+        name: resolved.ingredient,
         used: 1,
         total: 1,
         pending: false,
@@ -888,47 +1100,28 @@ async function profileIngredient(
         out: false,
         taste: resolved.taste,
         source: resolved.source,
+        measuredFrom: resolved.measuredFrom,
         derivedFrom: resolved.derivedFrom,
         processing: resolved.processing,
+        reasoning: resolved.reasoning,
         confidence: resolved.confidence,
         recipes: [],
       },
     ],
   });
 
-  const taste = await runLoggedStep(
-    emit,
-    "score",
-    `Using ingredient catalog taste for ${name} (no dilution)`,
-    async () => roundTaste(clampTaste(resolved.taste)),
-    deps.signal,
-  );
-
-  const learned = store
-    .all()
-    .filter((item) => !knownAtStart.has(item.ingredient));
-  if (learned.length && deps.persistLearned) {
-    await runLoggedStep(
-      emit,
-      "persist-seed",
-      `Saving ${learned.length} new ingredient${learned.length === 1 ? "" : "s"} to the ingredient catalog`,
-      () => learnedFlush.flushRemaining(store),
-      deps.signal,
-    );
-  }
-
   return {
     dish: query,
     origin: {
-      dish: name,
+      dish: resolved.ingredient,
       country: "",
       culture: "ingredient",
-      nativeName: name,
+      nativeName: resolved.ingredient,
       language: "English",
       languageCode: "en",
       searchQueries: [],
     },
-    taste,
+    taste: roundTaste(clampTaste(resolved.taste)),
     confidence: round2(
       dishConfidence([{ confidence: resolved.confidence, contribution: 1 }]),
     ),
@@ -936,7 +1129,7 @@ async function profileIngredient(
     representative: {
       ingredients: [
         {
-          name,
+          name: resolved.ingredient,
           volumeMl: 100,
           occurrence: { used: 1, total: 1 },
         },
@@ -1055,7 +1248,7 @@ function round2(value: number): number {
 }
 
 type LearnedFlush = {
-  onLearned: NonNullable<ResolveDeps["onLearned"]>;
+  onLearned: (item: ResolvedIngredient) => Promise<void>;
   flushRemaining: (store: IngredientStore) => Promise<void>;
 };
 
@@ -1090,4 +1283,4 @@ function createLearnedFlush(
   };
 }
 
-export type { UnknownLookup };
+export type { FoodHit } from "./usda";

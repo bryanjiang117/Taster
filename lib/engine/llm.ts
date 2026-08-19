@@ -1,16 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 import {
-  lookupFromModelJson,
   parseJsonText,
   recipeFromExtractJson,
-  type IngredientLookupJson,
   type RecipeExtractJson,
 } from "./llm-parse";
 import type { SearchMode } from "./dish-cache";
 import { FAST_MODEL, needsSmartIngredient, shouldEscalateOrigin, SMART_MODEL } from "./models";
-import type { UnknownLookup } from "./resolve";
 import type { SearchHit } from "./search";
-import type { DishOrigin, Recipe } from "./types";
+import type { DishOrigin, Recipe, TasteProfile } from "./types";
+import type { SourcePicks, SourceShortlist } from "./identity";
 
 export type IdentifyDishOptions = {
   searchMode?: SearchMode;
@@ -49,7 +47,23 @@ export interface LlmClient {
     catalog?: string[],
     context?: CulinaryContext,
   ): Promise<Record<string, string>>;
-  lookupIngredient(name: string): Promise<UnknownLookup>;
+  /** Grocery/pantry staple vs something that needs its own recipe. */
+  isCommonIngredient?(name: string): Promise<boolean>;
+  /** Pick the matching shortlist index per chemistry source, or null. */
+  confirmFoodShortlists?(
+    query: string,
+    shortlists: SourceShortlist[],
+    context?: CulinaryContext,
+  ): Promise<SourcePicks>;
+  /** Adjust a chemistry draft; code ignores dimensions without evidence. */
+  calibrateLeafTaste?(
+    name: string,
+    draft: TasteProfile,
+  ): Promise<Partial<TasteProfile> | undefined>;
+  /** Mouthful 0–10 when no chemistry source matched this exact grocery name. */
+  estimateLeafTaste?(name: string): Promise<TasteProfile | undefined>;
+  /** Unused by the pipeline. Allowed on test stubs. */
+  lookupIngredient?(name: string): Promise<unknown>;
 }
 
 export function classifyTasteInputPrompt(query: string): string {
@@ -91,9 +105,9 @@ export function canonicalizeIngredientNamesPrompt(
   return `Normalize each extracted ingredient.
 ${contextLine}
 Each mapping's "to" must be one singular short English grocery name, or a comma-separated list if the extracted line is multiple foods.
-If it is the same food as an item in CATALOG, copy that catalog string exactly (cut, packing, and marketing copy do not make a new food). Prefer the most specific catalog match.
-If it is a new food, invent a short singular grocery name.
-Keep distinct foods distinct (green papaya ≠ papaya, juice ≠ the vegetable, chicken breast ≠ chicken, lime ≠ lemon).
+If it is the same food as an item in CATALOG, copy that catalog string exactly (cut, packing, and marketing copy do not make a new food). Do not upgrade a generic name to a different product just because the catalog is more specific (chili in som tam or mapo tofu is the hot pepper, never sweet chili sauce).
+If it is a new food, invent a short singular English grocery name that preserves heat, fermentation, and form (thai chili, chili oil, fermented black bean, chili bean paste, msg).
+Keep distinct foods distinct (green papaya ≠ papaya, juice ≠ the vegetable, chicken breast ≠ chicken, lime ≠ lemon, chili ≠ sweet chili, chili oil ≠ canola oil, chili bean paste ≠ chili with beans).
 JSON {"mappings":[{"from":"...","to":"..."}]}
 NAMES: ${JSON.stringify(names)}
 CATALOG: ${JSON.stringify(catalog)}`;
@@ -118,6 +132,7 @@ For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.
 - "out" = side, garnish, dip, "for serving", lemon wedges on the side, bread, packaging, or anything not meant to flavor the cooked dish itself.
 When unsure, use "in".
+For each "in" ingredient, use culinary common sense about how THIS recipe treats it (bloomed in oil, drained, charred, fermented, reduced, crushed, raw, freshly cracked, etc.). Return mix.intensity (1 = the amount already implies the strength, 0 = none of it tastes in the bowl, >1 if concentrated into the dish) and mix.scale per-dimension multipliers only when prep changes that dimension. Freshly cracked black pepper is still not chili: scale spicy so the 0.2 leaf becomes ≈ 0.5. Do not output the dish's final 0-10 taste vector.
 Estimate cooking process volume effects in ml (negative for evaporation/discard/absorption).
 SOURCE: ${sourceUrl}
 TEXT: ${pageText.slice(0, 9000)}`;
@@ -136,26 +151,61 @@ For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.
 - "out" = side, garnish, dip, "for serving", lemon wedges on the side, bread, packaging, or anything not meant to flavor the cooked dish itself.
 When unsure, use "in".
+For each "in" ingredient, use culinary common sense about how THIS recipe treats it (bloomed in oil, drained, charred, fermented, reduced, crushed, raw, freshly cracked, etc.). Return mix.intensity (1 = the amount already implies the strength, 0 = none of it tastes in the bowl, >1 if concentrated into the dish) and mix.scale per-dimension multipliers only when prep changes that dimension. Freshly cracked black pepper is still not chili: scale spicy so the 0.2 leaf becomes ≈ 0.5. Do not output the dish's final 0-10 taste vector.
 Also list cookingSteps and estimate volume-changing processes (evaporation, absorption, expansion, discard, reduction, etc.) with volumeDeltaMl (negative when volume is lost).
 URL: ${sourceUrl}`;
 }
 
-export function ingredientLookupPrompt(name: string): string {
-  return `Resolve culinary ingredient "${name}".
-The stored 0-10 vector is how a mouthful of this food tastes, not milligrams, grams, pH, or SHU.
-Always include taste (sweet,sour,salty,spicy,umami,bitter) as that mouthful profile. Use culinary common sense.
-Also set sweetIndex, sourIndex, saltyIndex, spicyIndex, umamiIndex, bitterIndex to the same perceived 0-10. Indexes override every chemistry map (sugar, sodium, pH, glutamate, scoville).
-Prefer composition numbers only as evidence, and only when they match what you taste. Do not treat grams of sugar, mg of sodium, mg of glutamate, or scoville as the score. Do not use scoville except for chili/capsaicin heat (not black pepper, white pepper, ginger, or wasabi). Only include pH when the food is perceptibly acidic (citrus, vinegar, tomato, yogurt). Typical spice/meat/vegetable pH 5–6.5 is not sour — omit pH then.
-If composition is a poor fit, decompose into typical recipe parts with volumeMl totaling 100.
-Last resort: estimate taste only.
-Keep the JSON compact. reasoning must be one short sentence.
-Anchors — 10 is the everyday ceiling: 10 sour = lemon or lime (juice), 10 salty = table salt, 10 sweet = sugar, 10 spicy = habanero, 10 umami = fish sauce, 10 bitter = unsweetened espresso. Do not hedge: lemon and lime are 10 sour, not 8 or 9.
-Calibration: orange ≈ 7–8 sweet (mild sour); onion ≈ 0–1 sweet (pungent, barely sweet); tomato ≈ 2–3 sweet, 4–5 umami, 3–5 sour; parmesan ≈ 6–7 salty, high umami; black pepper ≈ 2–3 spicy; jalapeño ≈ 5–6 spicy. Milder acids (tomato, yogurt, tamarind pulp) sit lower. Rice vinegar is milder than lemon; distilled vinegar can match it.
-Do not output a finished dish taste profile.`;
+export function confirmFoodShortlistsPrompt(
+  query: string,
+  shortlists: SourceShortlist[],
+  context?: CulinaryContext,
+): string {
+  const contextLine = culinaryContextLine(context);
+  const lists = shortlists
+    .map((list) => {
+      const rows = list.hits
+        .map((hit, index) => `  ${index}. ${JSON.stringify(hit.name)}`)
+        .join("\n");
+      return `${list.source}:\n${rows || "  (none)"}`;
+    })
+    .join("\n");
+  return `For grocery ingredient ${JSON.stringify(query)}, pick the matching row in each database shortlist, or null.
+${contextLine}
+The title must be that ingredient (or the flavoring food inside a condiment: chili for chili oil). Accept a branded product only when it IS that ingredient (Kikkoman Soy Sauce for soy sauce). Reject keyword collisions, carrier foods, meals that merely contain the item, flavored variants unless the query is that variant, and the wrong plant part (chili oil ≠ canola oil or oil palm; chili bean paste ≠ canned chili with beans; wasabi soy ≠ soy sauce; chicken alfredo ≠ chicken).
+Return JSON {"picks":{"usda":0,"foodb":null}} using 0-based indexes. Example: if usda row 1 is Chili oil, return "usda": 1.
+QUERY: ${JSON.stringify(query)}
+SHORTLISTS:
+${lists}`;
+}
+
+export function isCommonIngredientPrompt(name: string): string {
+  return `Is "${name}" a common grocery / pantry / recipe ingredient people buy as-is (carrot, salt, soy sauce, doubanjiang, black pepper, beef), not a prepared dish that needs its own recipe (pho, sofrito, homemade dashi)?
+JSON {"common": true or false}`;
+}
+
+const LEAF_ANCHORS =
+  "A 10 is the most intense culinary form of that taste: 10 salty = table salt; 10 sweet = sugar; 10 spicy = thai chili or habanero; 10 umami = fish sauce; 10 bitter = unsweetened espresso. Do not hand out 10s because a food is iconic — a spoon of a 10 seasons a whole bowl. Lemon or lime fruit ≈ 9 sour; lemon or lime juice ≈ 9.5 (not 10). Juice, paste, and extract score higher than the whole food (juice ≠ fruit; paste ≠ the vegetable). orange ≈ 7–8 sweet; onion ≈ 0–1 sweet; parmesan ≈ 6–7 salty; black pepper ≈ 0.2 spicy (freshly cracked ≈ 0.5). Spicy is chili heat, not pepper pungency.";
+
+export function calibrateLeafPrompt(name: string, draft: TasteProfile): string {
+  return `Calibrate this chemistry draft for a mouthful of "${name}".
+You may change a dimension only when the draft already has signal there (lab compounds), except sour, umami, and spicy: nutrient tables often omit organic acids, free glutamate, capsaicin, and gingerol. You may add those when they define this ingredient and other measured nutrients exist. Do not invent salty/bitter/sweet-as-sugar from nothing. Potassium and hydrolyzed amino acids are not salt or umami. Bland vegetables stay near 0 (a trace of sweet is ok). Score the named form: citrus juice is more sour than the whole fruit. A paste of a sour fruit stays that fruit, not a tomato sauce. Hot chili peppers (Thai bird's eye, cayenne, habanero) are very spicy; sweet chili sauce is sweet. Raw seafood (squid, crab, shrimp, fish) has moderate umami from nucleotides even when tables only show sodium — calibrate roughly 4–7 umami for plain raw seafood. Ginger is pungent, not flavorless. MSG is high umami. Chili oil is chili heat, not canola oil.
+${LEAF_ANCHORS}
+Return taste 0-10. Do not output a finished dish profile.
+DRAFT: ${JSON.stringify(draft)}`;
+}
+
+export function estimateLeafPrompt(name: string): string {
+  return `Estimate a mouthful of grocery ingredient ${JSON.stringify(name)}. No lab table matched this exact name.
+Score THIS food, not a parent category or a dish that uses it (thai chili ≠ chili; chili ≠ sweet chili sauce; soft shell crab ≠ crab cakes or fried batter; chicken breast ≠ chicken). Score the named form: juice and paste are stronger than the whole food.
+Bland vegetables stay near 0 (a trace of sweet is ok). Hot chili peppers are very spicy. Raw seafood has moderate umami (~4–7). MSG is high umami. Chili oil is chili heat, not canola oil.
+${LEAF_ANCHORS}
+Return taste 0-10 for this ingredient alone. Do not output a finished dish profile.
+INGREDIENT: ${JSON.stringify(name)}`;
 }
 
 export const SYSTEM =
-  "You extract structured culinary data as JSON. Never invent a dish's final taste scores. Search native-language recipes for authentic versions, or the user's typed language for internationalized versions, as the task specifies. Ingredient 0-10 vectors are how a mouthful tastes; composition chemistry is evidence and must not replace that perception.";
+  "You extract structured culinary data as JSON. Never invent a dish's final taste scores. Search native-language recipes for authentic versions, or the user's typed language for internationalized versions, as the task specifies. Leaf ingredient scores start from measured compounds; you may calibrate perception, and may estimate a grocery mouthful only when no lab source matched that exact name.";
 
 export function geminiJsonRequest(
   model: string,
@@ -247,6 +297,23 @@ const RECIPE_SCHEMA = {
           amount: { type: "number" },
           unit: { type: "string" },
           role: { type: "string", enum: ["in", "out"] },
+          mix: {
+            type: "object",
+            properties: {
+              intensity: { type: "number" },
+              scale: {
+                type: "object",
+                properties: {
+                  sweet: { type: "number" },
+                  sour: { type: "number" },
+                  salty: { type: "number" },
+                  spicy: { type: "number" },
+                  umami: { type: "number" },
+                  bitter: { type: "number" },
+                },
+              },
+            },
+          },
         },
         required: ["name", "role"],
       },
@@ -286,37 +353,35 @@ const NAME_SCHEMA = {
   required: ["mappings"],
 };
 
-const INGREDIENT_SCHEMA = {
+const SHORTLIST_SCHEMA = {
   type: "object",
   properties: {
-    strategy: { type: "string" },
-    composition: {
+    picks: {
       type: "object",
       properties: {
-        sodiumMgPer100g: { type: "number" },
-        sugarGPer100g: { type: "number" },
-        pH: { type: "number" },
-        glutamateMgPer100g: { type: "number" },
-        scoville: { type: "number" },
-        sweetIndex: { type: "number" },
-        sourIndex: { type: "number" },
-        saltyIndex: { type: "number" },
-        spicyIndex: { type: "number" },
-        umamiIndex: { type: "number" },
-        bitterIndex: { type: "number" },
+        umami: { type: ["integer", "null"] },
+        phenol: { type: ["integer", "null"] },
+        duke: { type: ["integer", "null"] },
+        foodb: { type: ["integer", "null"] },
+        fct: { type: ["integer", "null"] },
+        usda: { type: ["integer", "null"] },
       },
     },
-    parts: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          name: { type: "string" },
-          volumeMl: { type: "number" },
-        },
-        required: ["name", "volumeMl"],
-      },
-    },
+  },
+  required: ["picks"],
+};
+
+const COMMON_INGREDIENT_SCHEMA = {
+  type: "object",
+  properties: {
+    common: { type: "boolean" },
+  },
+  required: ["common"],
+};
+
+const CALIBRATE_SCHEMA = {
+  type: "object",
+  properties: {
     taste: {
       type: "object",
       properties: {
@@ -328,10 +393,8 @@ const INGREDIENT_SCHEMA = {
         bitter: { type: "number" },
       },
     },
-    processing: { type: "array", items: { type: "string" } },
-    reasoning: { type: "string" },
   },
-  required: ["strategy"],
+  required: ["taste"],
 };
 
 export class GeminiLlm implements LlmClient {
@@ -465,22 +528,49 @@ Query: ${query}`,
     return mappingsFromJson(data);
   }
 
-  async lookupIngredient(name: string): Promise<UnknownLookup> {
-    const firstModel = needsSmartIngredient(name) ? SMART_MODEL : FAST_MODEL;
-    let result = await this.lookupWith(name, firstModel);
-    if (result.kind === "llm" && firstModel === FAST_MODEL) {
-      result = await this.lookupWith(name, SMART_MODEL);
-    }
-    return result;
+  async isCommonIngredient(name: string): Promise<boolean> {
+    const data = await this.json<{ common: boolean }>(
+      FAST_MODEL,
+      isCommonIngredientPrompt(name),
+      COMMON_INGREDIENT_SCHEMA,
+    );
+    return Boolean(data.common);
   }
 
-  private async lookupWith(name: string, model: string): Promise<UnknownLookup> {
-    const data = await this.json<IngredientLookupJson>(
-      model,
-      ingredientLookupPrompt(name),
-      INGREDIENT_SCHEMA,
+  async confirmFoodShortlists(
+    query: string,
+    shortlists: SourceShortlist[],
+    context?: CulinaryContext,
+  ): Promise<SourcePicks> {
+    const data = await this.json<{ picks?: SourcePicks }>(
+      FAST_MODEL,
+      confirmFoodShortlistsPrompt(query, shortlists, context),
+      SHORTLIST_SCHEMA,
     );
-    return lookupFromModelJson(data);
+    return data.picks ?? {};
+  }
+
+  async calibrateLeafTaste(
+    name: string,
+    draft: TasteProfile,
+  ): Promise<Partial<TasteProfile> | undefined> {
+    const model = needsSmartIngredient(name) ? SMART_MODEL : FAST_MODEL;
+    const data = await this.json<{ taste?: TasteProfile }>(
+      model,
+      calibrateLeafPrompt(name, draft),
+      CALIBRATE_SCHEMA,
+    );
+    return data.taste;
+  }
+
+  async estimateLeafTaste(name: string): Promise<TasteProfile | undefined> {
+    const model = needsSmartIngredient(name) ? SMART_MODEL : FAST_MODEL;
+    const data = await this.json<{ taste?: TasteProfile }>(
+      model,
+      estimateLeafPrompt(name),
+      CALIBRATE_SCHEMA,
+    );
+    return data.taste;
   }
 
   private async json<T>(

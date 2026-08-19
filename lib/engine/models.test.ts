@@ -134,4 +134,25 @@ describe("Gemini JSON mapping", () => {
       ["bread", "in"],
     ]);
   });
+
+  it("keeps prep mix intensity and scale from the extract", () => {
+    const recipe = recipeFromExtractJson(
+      {
+        ingredients: [
+          {
+            name: "chili",
+            amount: 1,
+            unit: "tbsp",
+            role: "in",
+            mix: { intensity: 1.5, scale: { spicy: 1.2 } },
+          },
+        ],
+      },
+      "https://example.com/oil",
+    );
+    expect(recipe?.ingredients[0]?.mix).toEqual({
+      intensity: 1.5,
+      scale: { spicy: 1.2 },
+    });
+  });
 });

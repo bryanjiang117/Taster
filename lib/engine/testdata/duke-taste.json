@@ -1,0 +1,736 @@
+{
+  "source": "USDA Dr. Duke Phytochemical and Ethnobotanical Databases; quantified ppm midpoint.",
+  "byName": {
+    "piper nigrum fruit": "piper nigrum fruit",
+    "piper nigrum": "piper nigrum fruit",
+    "black pepper": "piper nigrum fruit",
+    "pepper": "piper nigrum fruit",
+    "piper cubeba fruit": "piper cubeba fruit",
+    "piper cubeba": "piper cubeba fruit",
+    "anethum graveolens seed": "anethum graveolens seed",
+    "anethum graveolens": "anethum graveolens seed",
+    "piper nigrum stem": "piper nigrum stem",
+    "xylopia aethiopica seed": "xylopia aethiopica seed",
+    "xylopia aethiopica": "xylopia aethiopica seed",
+    "capsicum annuum fruit": "capsicum annuum fruit",
+    "capsicum annuum": "capsicum annuum fruit",
+    "chili": "capsicum annuum fruit",
+    "chile": "capsicum annuum fruit",
+    "cayenne": "capsicum annuum fruit",
+    "paprika": "capsicum annuum fruit",
+    "capsicum": "capsicum annuum fruit",
+    "capsicum frutescens fruit": "capsicum frutescens fruit",
+    "capsicum frutescens": "capsicum frutescens fruit",
+    "tabasco": "capsicum frutescens fruit",
+    "thai chili": "capsicum frutescens fruit",
+    "bird eye chili": "capsicum frutescens fruit",
+    "birds eye chili": "capsicum frutescens fruit",
+    "bird s eye chili": "capsicum frutescens fruit",
+    "capsicum annuum tissue culture": "capsicum annuum tissue culture",
+    "capsicum annuum resin exudate sap": "capsicum annuum resin exudate sap",
+    "capsicum frutescens seed": "capsicum frutescens seed",
+    "zingiber officinale rhizome": "zingiber officinale rhizome",
+    "zingiber officinale": "zingiber officinale rhizome",
+    "ginger": "zingiber officinale rhizome",
+    "allium sativum var sativum bulb": "allium sativum var sativum bulb",
+    "allium sativum var sativum": "allium sativum var sativum bulb",
+    "garlic": "allium sativum var sativum bulb",
+    "armoracia rusticana root": "armoracia rusticana root",
+    "armoracia rusticana": "armoracia rusticana root",
+    "horseradish": "armoracia rusticana root",
+    "brassica nigra seed": "brassica nigra seed",
+    "brassica nigra": "brassica nigra seed",
+    "mustard": "brassica nigra seed",
+    "black mustard": "brassica nigra seed",
+    "brassica oleracea var capitata l seed": "brassica oleracea var capitata l seed",
+    "brassica oleracea var capitata l": "brassica oleracea var capitata l seed",
+    "brassica oleracea var botrytis l flower": "brassica oleracea var botrytis l flower",
+    "brassica oleracea var botrytis l": "brassica oleracea var botrytis l flower",
+    "alliaria petiolata plant": "alliaria petiolata plant",
+    "alliaria petiolata": "alliaria petiolata plant",
+    "brassica oleracea var capitata l leaf": "brassica oleracea var capitata l leaf",
+    "camellia sinensis leaf": "camellia sinensis leaf",
+    "camellia sinensis": "camellia sinensis anther",
+    "tea": "camellia sinensis anther",
+    "green tea": "camellia sinensis anther",
+    "black tea": "camellia sinensis anther",
+    "camellia sinensis shoot": "camellia sinensis shoot",
+    "citrus limon flower": "citrus limon flower",
+    "citrus limon": "citrus limon flower",
+    "lemon": "citrus limon flower",
+    "citrus sinensis bud": "citrus sinensis bud",
+    "citrus sinensis": "citrus sinensis leaf",
+    "citrus sinensis flower": "citrus sinensis flower",
+    "citrus sinensis leaf": "citrus sinensis leaf",
+    "citrus paradisi flower": "citrus paradisi flower",
+    "citrus paradisi": "citrus paradisi seed",
+    "grapefruit": "citrus paradisi seed",
+    "coffea arabica seed": "coffea arabica seed",
+    "coffea arabica": "coffea arabica seed",
+    "coffee": "coffea arabica seed",
+    "cola acuminata seed": "cola acuminata seed",
+    "cola acuminata": "cola acuminata seed",
+    "genipa americana seed": "genipa americana seed",
+    "genipa americana": "genipa americana seed",
+    "ilex paraguariensis leaf": "ilex paraguariensis leaf",
+    "ilex paraguariensis": "ilex paraguariensis leaf",
+    "paullinia cupana seed": "paullinia cupana seed",
+    "paullinia cupana": "paullinia cupana seed",
+    "paullinia yoko bark": "paullinia yoko bark",
+    "paullinia yoko": "paullinia yoko bark",
+    "theobroma cacao petiole": "theobroma cacao petiole",
+    "theobroma cacao": "theobroma cacao seed",
+    "cocoa": "theobroma cacao seed",
+    "cacao": "theobroma cacao seed",
+    "cocoa powder": "theobroma cacao seed",
+    "theobroma cacao seed": "theobroma cacao seed",
+    "theobroma cacao testa": "theobroma cacao testa",
+    "theobroma angustifolium petiole": "theobroma angustifolium petiole",
+    "theobroma angustifolium": "theobroma angustifolium seed",
+    "theobroma angustifolium seed": "theobroma angustifolium seed",
+    "theobroma angustifolium testa": "theobroma angustifolium testa",
+    "theobroma bicolor fruit": "theobroma bicolor fruit",
+    "theobroma bicolor": "theobroma bicolor seed",
+    "theobroma bicolor petiole": "theobroma bicolor petiole",
+    "theobroma bicolor seed": "theobroma bicolor seed",
+    "theobroma bicolor testa": "theobroma bicolor testa",
+    "paullinia cupana plant": "paullinia cupana plant",
+    "camellia sinensis anther": "camellia sinensis anther",
+    "cinchona spp bark": "cinchona spp bark",
+    "cinchona spp": "cinchona spp bark",
+    "cinchona pubescens bark": "cinchona pubescens bark",
+    "cinchona pubescens": "cinchona pubescens root",
+    "cinchona pubescens shoot": "cinchona pubescens shoot",
+    "cinchona pubescens stem": "cinchona pubescens stem",
+    "cinchona pubescens root": "cinchona pubescens root",
+    "cinchona pubescens leaf": "cinchona pubescens leaf",
+    "citrus paradisi fruit": "citrus paradisi fruit",
+    "citrus paradisi pericarp": "citrus paradisi pericarp",
+    "citrus paradisi seed": "citrus paradisi seed",
+    "citrus paradisi plant": "citrus paradisi plant",
+    "citrus reticulata pericarp": "citrus reticulata pericarp",
+    "citrus reticulata": "citrus reticulata pericarp"
+  },
+  "byId": {
+    "piper nigrum fruit": {
+      "name": "Piper nigrum, Fruit",
+      "part": "Fruit",
+      "compounds": [
+        {
+          "id": "piperine",
+          "amount": 7750.0
+        }
+      ]
+    },
+    "piper cubeba fruit": {
+      "name": "Piper cubeba, Fruit",
+      "part": "Fruit",
+      "compounds": [
+        {
+          "id": "piperine",
+          "amount": 300.0
+        }
+      ]
+    },
+    "anethum graveolens seed": {
+      "name": "Anethum graveolens, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "piperine",
+          "amount": 2.86
+        }
+      ]
+    },
+    "piper nigrum stem": {
+      "name": "Piper nigrum, Stem",
+      "part": "Stem",
+      "compounds": [
+        {
+          "id": "piperine",
+          "amount": 110.0
+        }
+      ]
+    },
+    "xylopia aethiopica seed": {
+      "name": "Xylopia aethiopica, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "piperine",
+          "amount": 910.0
+        }
+      ]
+    },
+    "capsicum annuum fruit": {
+      "name": "Capsicum annuum, Fruit",
+      "part": "Fruit",
+      "compounds": [
+        {
+          "id": "capsaicin",
+          "amount": 205.0
+        }
+      ]
+    },
+    "capsicum frutescens fruit": {
+      "name": "Capsicum frutescens, Fruit",
+      "part": "Fruit",
+      "compounds": [
+        {
+          "id": "capsaicin",
+          "amount": 900.0
+        }
+      ]
+    },
+    "capsicum annuum tissue culture": {
+      "name": "Capsicum annuum, Tissue Culture",
+      "part": "Tissue Culture",
+      "compounds": [
+        {
+          "id": "capsaicin",
+          "amount": 59.0
+        }
+      ]
+    },
+    "capsicum annuum resin exudate sap": {
+      "name": "Capsicum annuum, Resin, Exudate, Sap",
+      "part": "Resin, Exudate, Sap",
+      "compounds": [
+        {
+          "id": "capsaicin",
+          "amount": 63400.0
+        }
+      ]
+    },
+    "capsicum frutescens seed": {
+      "name": "Capsicum frutescens, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "capsaicin",
+          "amount": 0.5
+        }
+      ]
+    },
+    "zingiber officinale rhizome": {
+      "name": "Zingiber officinale, Rhizome",
+      "part": "Rhizome",
+      "compounds": [
+        {
+          "id": "gingerol",
+          "amount": 363.4
+        }
+      ]
+    },
+    "allium sativum var sativum bulb": {
+      "name": "Allium sativum var. sativum, Bulb",
+      "part": "Bulb",
+      "compounds": [
+        {
+          "id": "allicin",
+          "amount": 1465.0
+        }
+      ]
+    },
+    "armoracia rusticana root": {
+      "name": "Armoracia rusticana, Root",
+      "part": "Root",
+      "compounds": [
+        {
+          "id": "sinigrin",
+          "amount": 300.0
+        },
+        {
+          "id": "allyl_isothiocyanate",
+          "amount": 149.6
+        }
+      ]
+    },
+    "brassica nigra seed": {
+      "name": "Brassica nigra, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "sinigrin",
+          "amount": 1100.0
+        },
+        {
+          "id": "allyl_isothiocyanate",
+          "amount": 913.5
+        }
+      ]
+    },
+    "brassica oleracea var capitata l seed": {
+      "name": "Brassica oleracea var. capitata l., Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "sinigrin",
+          "amount": 4.47
+        }
+      ]
+    },
+    "brassica oleracea var botrytis l flower": {
+      "name": "Brassica oleracea var. botrytis l., Flower",
+      "part": "Flower",
+      "compounds": [
+        {
+          "id": "sinigrin",
+          "amount": 32.5
+        }
+      ]
+    },
+    "alliaria petiolata plant": {
+      "name": "Alliaria petiolata, Plant",
+      "part": "Plant",
+      "compounds": [
+        {
+          "id": "allyl_isothiocyanate",
+          "amount": 25.0
+        }
+      ]
+    },
+    "brassica oleracea var capitata l leaf": {
+      "name": "Brassica oleracea var. capitata l., Leaf",
+      "part": "Leaf",
+      "compounds": [
+        {
+          "id": "allyl_isothiocyanate",
+          "amount": 2.0
+        }
+      ]
+    },
+    "camellia sinensis leaf": {
+      "name": "Camellia sinensis, Leaf",
+      "part": "Leaf",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 4840.5
+        },
+        {
+          "id": "theobromine",
+          "amount": 80.0
+        }
+      ]
+    },
+    "camellia sinensis shoot": {
+      "name": "Camellia sinensis, Shoot",
+      "part": "Shoot",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 4300.0
+        }
+      ]
+    },
+    "citrus limon flower": {
+      "name": "Citrus limon, Flower",
+      "part": "Flower",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 5.0
+        }
+      ]
+    },
+    "citrus sinensis bud": {
+      "name": "Citrus sinensis, Bud",
+      "part": "Bud",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 0.03
+        }
+      ]
+    },
+    "citrus sinensis flower": {
+      "name": "Citrus sinensis, Flower",
+      "part": "Flower",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 6.2
+        }
+      ]
+    },
+    "citrus sinensis leaf": {
+      "name": "Citrus sinensis, Leaf",
+      "part": "Leaf",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 0.6
+        }
+      ]
+    },
+    "citrus paradisi flower": {
+      "name": "Citrus paradisi, Flower",
+      "part": "Flower",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 2.9
+        }
+      ]
+    },
+    "coffea arabica seed": {
+      "name": "Coffea arabica, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 1630.0
+        },
+        {
+          "id": "theobromine",
+          "amount": 1.9
+        }
+      ]
+    },
+    "cola acuminata seed": {
+      "name": "Cola acuminata, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 1750.0
+        },
+        {
+          "id": "theobromine",
+          "amount": 100.0
+        }
+      ]
+    },
+    "genipa americana seed": {
+      "name": "Genipa americana, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 2250.0
+        }
+      ]
+    },
+    "ilex paraguariensis leaf": {
+      "name": "Ilex paraguariensis, Leaf",
+      "part": "Leaf",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 1100.0
+        },
+        {
+          "id": "theobromine",
+          "amount": 298.0
+        }
+      ]
+    },
+    "paullinia cupana seed": {
+      "name": "Paullinia cupana, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 4255.0
+        },
+        {
+          "id": "theobromine",
+          "amount": 30.0
+        }
+      ]
+    },
+    "paullinia yoko bark": {
+      "name": "Paullinia yoko, Bark",
+      "part": "Bark",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 2730.0
+        }
+      ]
+    },
+    "theobroma cacao petiole": {
+      "name": "Theobroma cacao, Petiole",
+      "part": "Petiole",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 15.15
+        },
+        {
+          "id": "theobromine",
+          "amount": 19.85
+        }
+      ]
+    },
+    "theobroma cacao seed": {
+      "name": "Theobroma cacao, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 670.0
+        },
+        {
+          "id": "theobromine",
+          "amount": 2250.0
+        }
+      ]
+    },
+    "theobroma cacao testa": {
+      "name": "Theobroma cacao, Testa",
+      "part": "Testa",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 42.65
+        },
+        {
+          "id": "theobromine",
+          "amount": 696.8
+        }
+      ]
+    },
+    "theobroma angustifolium petiole": {
+      "name": "Theobroma angustifolium, Petiole",
+      "part": "Petiole",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 8.1
+        },
+        {
+          "id": "theobromine",
+          "amount": 3.1
+        }
+      ]
+    },
+    "theobroma angustifolium seed": {
+      "name": "Theobroma angustifolium, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 4.6
+        },
+        {
+          "id": "theobromine",
+          "amount": 34.9
+        }
+      ]
+    },
+    "theobroma angustifolium testa": {
+      "name": "Theobroma angustifolium, Testa",
+      "part": "Testa",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 4.5
+        },
+        {
+          "id": "theobromine",
+          "amount": 31.3
+        }
+      ]
+    },
+    "theobroma bicolor fruit": {
+      "name": "Theobroma bicolor, Fruit",
+      "part": "Fruit",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 17.1
+        },
+        {
+          "id": "theobromine",
+          "amount": 145.15
+        }
+      ]
+    },
+    "theobroma bicolor petiole": {
+      "name": "Theobroma bicolor, Petiole",
+      "part": "Petiole",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 10.5
+        },
+        {
+          "id": "theobromine",
+          "amount": 12.3
+        }
+      ]
+    },
+    "theobroma bicolor seed": {
+      "name": "Theobroma bicolor, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 12.85
+        },
+        {
+          "id": "theobromine",
+          "amount": 142.45
+        }
+      ]
+    },
+    "theobroma bicolor testa": {
+      "name": "Theobroma bicolor, Testa",
+      "part": "Testa",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 21.35
+        },
+        {
+          "id": "theobromine",
+          "amount": 897.25
+        }
+      ]
+    },
+    "paullinia cupana plant": {
+      "name": "Paullinia cupana, Plant",
+      "part": "Plant",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 2500.0
+        }
+      ]
+    },
+    "camellia sinensis anther": {
+      "name": "Camellia sinensis, Anther",
+      "part": "Anther",
+      "compounds": [
+        {
+          "id": "caffeine",
+          "amount": 0.01
+        }
+      ]
+    },
+    "cinchona spp bark": {
+      "name": "Cinchona spp, Bark",
+      "part": "Bark",
+      "compounds": [
+        {
+          "id": "quinine",
+          "amount": 2400.0
+        }
+      ]
+    },
+    "cinchona pubescens bark": {
+      "name": "Cinchona pubescens, Bark",
+      "part": "Bark",
+      "compounds": [
+        {
+          "id": "quinine",
+          "amount": 4377.65
+        }
+      ]
+    },
+    "cinchona pubescens shoot": {
+      "name": "Cinchona pubescens, Shoot",
+      "part": "Shoot",
+      "compounds": [
+        {
+          "id": "quinine",
+          "amount": 70.0
+        }
+      ]
+    },
+    "cinchona pubescens stem": {
+      "name": "Cinchona pubescens, Stem",
+      "part": "Stem",
+      "compounds": [
+        {
+          "id": "quinine",
+          "amount": 11.2
+        }
+      ]
+    },
+    "cinchona pubescens root": {
+      "name": "Cinchona pubescens, Root",
+      "part": "Root",
+      "compounds": [
+        {
+          "id": "quinine",
+          "amount": 130.0
+        }
+      ]
+    },
+    "cinchona pubescens leaf": {
+      "name": "Cinchona pubescens, Leaf",
+      "part": "Leaf",
+      "compounds": [
+        {
+          "id": "quinine",
+          "amount": 480.0
+        }
+      ]
+    },
+    "citrus paradisi fruit": {
+      "name": "Citrus paradisi, Fruit",
+      "part": "Fruit",
+      "compounds": [
+        {
+          "id": "naringin",
+          "amount": 9762.25
+        },
+        {
+          "id": "limonin",
+          "amount": 24.0
+        }
+      ]
+    },
+    "citrus paradisi pericarp": {
+      "name": "Citrus paradisi, Pericarp",
+      "part": "Pericarp",
+      "compounds": [
+        {
+          "id": "naringin",
+          "amount": 914.8
+        },
+        {
+          "id": "limonin",
+          "amount": 3.55
+        }
+      ]
+    },
+    "citrus paradisi seed": {
+      "name": "Citrus paradisi, Seed",
+      "part": "Seed",
+      "compounds": [
+        {
+          "id": "naringin",
+          "amount": 143.85
+        },
+        {
+          "id": "limonin",
+          "amount": 153.65
+        }
+      ]
+    },
+    "citrus paradisi plant": {
+      "name": "Citrus paradisi, Plant",
+      "part": "Plant",
+      "compounds": [
+        {
+          "id": "limonin",
+          "amount": 7.45
+        }
+      ]
+    },
+    "citrus reticulata pericarp": {
+      "name": "Citrus reticulata, Pericarp",
+      "part": "Pericarp",
+      "compounds": [
+        {
+          "id": "limonin",
+          "amount": 7.3
+        }
+      ]
+    }
+  }
+}

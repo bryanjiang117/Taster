@@ -240,14 +240,15 @@ export default function HomePage() {
 
   return (
     <main>
+      {totalTastes != null ? (
+        <p className="taste-count" aria-live="polite">
+          <span className="taste-count-label">Total tastings</span>
+          <b>{totalTastes.toLocaleString("en-US")}</b>
+        </p>
+      ) : null}
       <h1>Taster</h1>
       <div className="intro-copy">
         <p className="lede">Type a dish. Get a taste profile.</p>
-        {totalTastes != null ? (
-          <p className="taste-count" aria-live="polite">
-            {formatTasteCount(totalTastes)}
-          </p>
-        ) : null}
       </div>
 
       <form onSubmit={onSubmit}>
@@ -453,9 +454,4 @@ function label(dim: string): string {
 
 function formatScore(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
-
-function formatTasteCount(n: number): string {
-  const count = n.toLocaleString("en-US");
-  return n === 1 ? "1 taste" : `${count} tastes`;
 }

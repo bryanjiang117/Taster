@@ -44,30 +44,6 @@ export function scaleTaste(taste: TasteProfile, factor: number): TasteProfile {
   return out;
 }
 
-/** Raw concentration (typically 0.05–0.8) that maps to ~6.3/10. Smaller = louder dish scores. */
-export const TASTE_SCALE_TAU = 0.8;
-
-/** Sweet reads a bit hotter than salt/umami at the same dissolved share; quiet it slightly. */
-export const TASTE_SCALE_TAU_BY_DIM: Partial<Record<keyof TasteProfile, number>> = {
-  sweet: 1.05,
-};
-
-export function toPerceptualScore(raw: number, tau = TASTE_SCALE_TAU): number {
-  if (raw <= 0 || tau <= 0) return 0;
-  return clampScore(10 * (1 - Math.exp(-raw / tau)));
-}
-
-export function toPerceptualTaste(taste: TasteProfile, tau = TASTE_SCALE_TAU): TasteProfile {
-  const out = emptyTaste();
-  for (const dim of TASTE_DIMENSIONS) {
-    out[dim] = toPerceptualScore(
-      taste[dim] ?? 0,
-      TASTE_SCALE_TAU_BY_DIM[dim] ?? tau,
-    );
-  }
-  return out;
-}
-
 export function ceilingTaste(tastes: TasteProfile[]): TasteProfile {
   const out = emptyTaste();
   for (const taste of tastes) {
@@ -89,6 +65,9 @@ export function capTaste(taste: TasteProfile, ceiling: TasteProfile): TasteProfi
 /** Higher = gentler. 2 leaves a 6 next to a 7 almost untouched and sends a 2 toward 1. */
 export const TASTE_POLARIZE_POWER = 2;
 
+/** Only trace flavors (≤ this) are quieted vs the peak; real mid scores stay put. */
+export const TASTE_POLARIZE_TRACE_MAX = 2;
+
 export function polarizeTaste(
   taste: TasteProfile,
   power = TASTE_POLARIZE_POWER,
@@ -103,13 +82,17 @@ export function polarizeTaste(
   for (const dim of TASTE_DIMENSIONS) {
     const score = taste[dim] ?? 0;
     if (score <= 0) continue;
+    if (score > TASTE_POLARIZE_TRACE_MAX) {
+      out[dim] = score;
+      continue;
+    }
     const ratio = Math.min(1, score / peak);
     out[dim] = score * (1 - (1 - ratio) ** power);
   }
   return out;
 }
 
-/** Replace any dimension the overlay actually set. Used when chemistry and mouthful taste both arrive. */
+/** Replace mouthful taste dimensions that the model actually rated (> 0). Zeros mean "unspecified", not "not salty"; use *Index for an explicit 0. */
 export function overlayTaste(
   base: TasteProfile,
   overlay?: Partial<TasteProfile>,
@@ -118,7 +101,7 @@ export function overlayTaste(
   const out = clampTaste(base);
   for (const dim of TASTE_DIMENSIONS) {
     const value = overlay[dim];
-    if (value != null) out[dim] = clampScore(value);
+    if (value != null && value > 0) out[dim] = clampScore(value);
   }
   return out;
 }

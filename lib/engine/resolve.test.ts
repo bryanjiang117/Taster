@@ -105,6 +105,20 @@ describe("ingredient resolution", () => {
     expect(result.taste.umami).toBe(7);
   });
 
+  it("keeps chemistry salty when mouthful taste marks salty as 0", async () => {
+    const store = new IngredientStore();
+    const result = await resolveIngredient("fish sauce", {
+      store,
+      lookupUnknown: async () => ({
+        kind: "composition",
+        composition: { sodiumMgPer100g: 8000, glutamateMgPer100g: 900 },
+        taste: { sweet: 1, sour: 1, salty: 0, spicy: 0, umami: 10, bitter: 0.5 },
+      }),
+    });
+    expect(result.taste.salty).toBeGreaterThan(8);
+    expect(result.taste.umami).toBe(10);
+  });
+
   it("uses mouthful taste over sugar grams when composition includes both", async () => {
     const store = new IngredientStore();
     const result = await resolveIngredient("orange", {

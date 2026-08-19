@@ -3,7 +3,6 @@ import {
   delayForPhase,
   DISH_PLACEHOLDERS,
   shufflePhrases,
-  shuffleRest,
   startTypewriter,
   stepTypewriter,
   typewriterText,
@@ -84,11 +83,3 @@ describe("shufflePhrases", () => {
   });
 });
 
-describe("shuffleRest", () => {
-  it("keeps the first phrase so SSR and hydration share the same placeholder", () => {
-    // random() === 0 on the tail ["ceviche", "ramen"] yields ["ramen", "ceviche"].
-    const shuffled = shuffleRest(["som tam", "ceviche", "ramen"], () => 0);
-    expect(shuffled[0]).toBe("som tam");
-    expect(shuffled).toEqual(["som tam", "ramen", "ceviche"]);
-  });
-});

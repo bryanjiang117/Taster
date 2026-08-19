@@ -5,6 +5,7 @@ import { IngredientStore } from "./store";
 import type { LlmClient } from "./llm";
 import type { PageClient, SearchClient } from "./search";
 import type { Recipe, TasteProfile } from "./types";
+import { stubChemistryClients } from "./test-foods";
 
 const soy: TasteProfile = {
   sweet: 1,
@@ -141,10 +142,12 @@ describe("profileDish pipeline", () => {
 
     expect(result.origin.nativeName).toBe("ส้มตำ");
     expect(result.recipesAnalyzed).toBe(3);
-    expect(result.taste.sour).toBeGreaterThan(result.taste.bitter);
+    expect(result.taste.sour).toBeGreaterThan(7);
     expect(result.taste.bitter).toBeLessThanOrEqual(1);
-    expect(result.taste.salty).toBeGreaterThan(1);
-    expect(result.taste.spicy).toBeGreaterThan(0.5);
+    expect(result.taste.salty).toBeGreaterThan(7);
+    expect(result.taste.umami).toBeGreaterThan(7);
+    expect(result.taste.spicy).toBeGreaterThan(5);
+    expect(result.taste.spicy).toBeLessThan(9);
     expect(result.confidence).toBeGreaterThan(0.5);
     expect(result.representative.ingredients.map((i) => i.name)).toEqual(
       expect.arrayContaining(["lime", "fish sauce", "chili", "palm sugar"]),
@@ -156,7 +159,7 @@ describe("profileDish pipeline", () => {
     expect(events.some((e) => e.message.includes("Loading cached taste vector"))).toBe(
       true,
     );
-    expect(events.some((e) => e.message.includes("effective concentration"))).toBe(
+    expect(events.some((e) => e.message.includes("Computing taste from ingredient amounts"))).toBe(
       true,
     );
     expect(ingredientSnapshots.length).toBeGreaterThan(0);
@@ -218,17 +221,7 @@ describe("profileDish pipeline", () => {
         }),
         canonicalizeIngredientNames: async (names) =>
           Object.fromEntries(names.map((name) => [name, name])),
-        lookupIngredient: async (name) => {
-          lookups += 1;
-          if (lookups >= 2) {
-            controller.abort();
-            await new Promise(() => {});
-          }
-          return {
-            kind: "llm",
-            taste: { sweet: 0, sour: 0, salty: 1, spicy: 2, umami: 1, bitter: 4 },
-          };
-        },
+        isCommonIngredient: async () => true,
       },
       search: {
         search: async () => [
@@ -239,6 +232,21 @@ describe("profileDish pipeline", () => {
       },
       pages: { fetchText: async () => "x".repeat(500) },
       store: new IngredientStore([]),
+      usda: {
+        search: async (name) => {
+          lookups += 1;
+          if (lookups >= 2) {
+            controller.abort();
+            await new Promise(() => {});
+          }
+          return { id: name, name };
+        },
+        compounds: async () => [{ id: "sodium", amount: 400 }],
+      },
+      foodb: {
+        search: async (name) => ({ id: name, name }),
+        compounds: async () => [],
+      },
       persistLearned: async (learned) => {
         persisted.push(...learned.map((item) => item.ingredient));
       },
@@ -286,13 +294,7 @@ describe("profileDish pipeline", () => {
           }
           return map;
         },
-        lookupIngredient: async (name) => {
-          lookedUp.push(name);
-          return {
-            kind: "llm",
-            taste: { sweet: 0, sour: 0, salty: 0, spicy: 6, umami: 2, bitter: 2 },
-          };
-        },
+        isCommonIngredient: async () => true,
       },
       search: {
         search: async () => [
@@ -303,6 +305,17 @@ describe("profileDish pipeline", () => {
       },
       pages: { fetchText: async () => "" },
       store: loadSeedStore(),
+      usda: {
+        search: async (name) => {
+          lookedUp.push(name);
+          return { id: name, name };
+        },
+        compounds: async () => [{ id: "sodium", amount: 400 }],
+      },
+      foodb: {
+        search: async (name) => ({ id: name, name }),
+        compounds: async () => [{ id: "glutamate", amount: 50 }],
+      },
       persistLearned: async (learned) => {
         persisted.push(...learned.map((item) => item.ingredient));
       },
@@ -1105,6 +1118,7 @@ describe("profileDish pipeline", () => {
           kind: "llm",
           taste: { sweet: 0, sour: 0, salty: 0, spicy: 0, umami: 0, bitter: 0 },
         }),
+        isCommonIngredient: async () => true,
       },
       search: {
         search: async () => [{ title: "水煮肉片", url: grounding, snippet: "" }],
@@ -1117,6 +1131,8 @@ describe("profileDish pipeline", () => {
       },
       store: loadSeedStore(),
       recipeLimit: 1,
+      usda: stubChemistryClients().usda,
+      foodb: stubChemistryClients().foodb,
       onProgress: (event) => {
         if (event.type === "ingredients") {
           const beef = event.items.find((item) => item.name === "beef");
@@ -1590,6 +1606,96 @@ describe("profileDish pipeline", () => {
     });
     expect(queries.length).toBeGreaterThan(1);
     expect(result.recipesAnalyzed).toBeGreaterThan(3);
+  });
+
+  it("estimates a grocery leaf with Gemini when chemistry misses, without a nested recipe search", async () => {
+    const identified: string[] = [];
+    const estimated: string[] = [];
+    const persisted: Array<{ ingredient: string; source: string; umami: number }> =
+      [];
+    const crab = {
+      sweet: 0.5,
+      sour: 0,
+      salty: 2,
+      spicy: 0,
+      umami: 6,
+      bitter: 0,
+    };
+    const result = await profileDish("som tam", {
+      llm: {
+        identifyDish: async (dish) => {
+          identified.push(dish);
+          return {
+            dish,
+            country: "Thailand",
+            culture: "Thai",
+            nativeName: "ส้มตำ",
+            language: "Thai",
+            languageCode: "th",
+            searchQueries: ["ส้มตำ สูตร"],
+          };
+        },
+        extractRecipe: async (_text, url) => ({
+          url,
+          ingredients: [
+            { name: "lime", volumeMl: 30 },
+            { name: "soft shell crab", volumeMl: 80 },
+          ],
+        }),
+        canonicalizeIngredientNames: async (names) =>
+          Object.fromEntries(names.map((name) => [name, name])),
+        estimateLeafTaste: async (name) => {
+          estimated.push(name);
+          return crab;
+        },
+      },
+      search: {
+        search: async () =>
+          [1, 2, 3].map((n) => ({
+            title: "ส้มตำ",
+            url: `https://example.com/tam-${n}`,
+            snippet: "",
+          })),
+      },
+      pages: { fetchText: async () => "recipe page" },
+      store: new IngredientStore([
+        {
+          ingredient: "lime",
+          taste: { sweet: 1, sour: 9, salty: 0, spicy: 0, umami: 0, bitter: 1 },
+          derivedFrom: [],
+          processing: [],
+          confidence: 0.9,
+          source: "measured",
+        },
+      ]),
+      usda: { search: async () => null, compounds: async () => [] },
+      foodb: { search: async () => null, compounds: async () => [] },
+      fct: { candidates: async () => [], compounds: async () => [] },
+      umami: { candidates: async () => [], compounds: async () => [] },
+      phenol: { candidates: async () => [], compounds: async () => [] },
+      duke: { candidates: async () => [], compounds: async () => [] },
+      persistLearned: async (learned) => {
+        persisted.push(
+          ...learned.map((item) => ({
+            ingredient: item.ingredient,
+            source: item.source,
+            umami: item.taste.umami,
+          })),
+        );
+      },
+    });
+    expect(identified).toEqual(["som tam"]);
+    expect(estimated).toContain("soft shell crab");
+    const leaf = result.provenance.find(
+      (item) => item.ingredient === "soft shell crab",
+    );
+    expect(leaf?.source).toBe("llm");
+    expect(leaf?.taste.umami).toBe(6);
+    expect(persisted).toContainEqual({
+      ingredient: "soft shell crab",
+      source: "llm",
+      umami: 6,
+    });
   });
 });
 

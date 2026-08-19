@@ -108,7 +108,7 @@ export const DISH_PLACEHOLDERS = [
   "lumpia",
 ] as const;
 
-/** Fisher–Yates shuffle; returns a new array. */
+/** Fisher–Yates shuffle of the whole list, including the starting phrase. */
 export function shufflePhrases(
   phrases: readonly string[],
   random: () => number = Math.random,
@@ -119,16 +119,6 @@ export function shufflePhrases(
     [next[i], next[j]] = [next[j]!, next[i]!];
   }
   return next;
-}
-
-/** Shuffle everything after the first item so SSR and hydration can share it. */
-export function shuffleRest(
-  phrases: readonly string[],
-  random: () => number = Math.random,
-): string[] {
-  if (phrases.length <= 1) return [...phrases];
-  const [first, ...rest] = phrases;
-  return [first!, ...shufflePhrases(rest, random)];
 }
 
 const DELAYS: Record<TypewriterPhase, number> = {

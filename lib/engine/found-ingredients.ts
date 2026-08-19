@@ -1,3 +1,4 @@
+import type { ChemistrySourceId } from "./identity";
 import { normalizeIngredientName } from "./normalize";
 import type { IngredientStore } from "./store";
 import { TASTE_DIMENSIONS, type TasteProfile } from "./taste";
@@ -18,8 +19,10 @@ export type FoundIngredient = {
   out: boolean;
   taste?: TasteProfile;
   source?: ConfidenceSource;
+  measuredFrom?: ChemistrySourceId[];
   derivedFrom?: string[];
   processing?: string[];
+  reasoning?: string;
   confidence?: number;
   recipes: FoundRecipeLink[];
 };
@@ -86,8 +89,10 @@ export function foundIngredientsFromRecipes(
       out: (inUsed.get(name) ?? 0) === 0,
       taste: cached?.taste,
       source: cached?.source,
+      measuredFrom: cached?.measuredFrom,
       derivedFrom: cached?.derivedFrom,
       processing: cached?.processing,
+      reasoning: cached?.reasoning,
       confidence: cached?.confidence,
       recipes: sources.get(name) ?? [],
     });

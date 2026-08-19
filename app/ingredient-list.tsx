@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { TASTE_DIMENSIONS, type TasteProfile } from "@/lib/engine/taste";
 import type { FoundIngredient } from "@/lib/engine/found-ingredients";
+import { formatIngredientProvenance } from "@/lib/ui/ingredient-provenance";
 
 function coarsePointer(): boolean {
   return window.matchMedia("(pointer: coarse)").matches;
@@ -188,6 +189,8 @@ function IngredientTip({
     setPos({ top, left });
   }, [anchor, item.name, item.recipes.length]);
 
+  const provenance = formatIngredientProvenance(item);
+
   return createPortal(
     <div
       ref={tipRef}
@@ -220,14 +223,7 @@ function IngredientTip({
         <p>from {item.derivedFrom.join(", ")}</p>
       ) : null}
       {item.processing?.length ? <p>{item.processing.join(", ")}</p> : null}
-      {item.source ? (
-        <p>
-          {item.source}
-          {item.confidence != null
-            ? ` · ${Math.round(item.confidence * 100)}%`
-            : ""}
-        </p>
-      ) : null}
+      {provenance ? <p>{provenance}</p> : null}
     </div>,
     document.body,
   );

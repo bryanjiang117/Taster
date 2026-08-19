@@ -6,6 +6,7 @@ import { loadProductionStore, persistProductionLearned } from "@/lib/engine/cata
 import { loadProductionDishStore, persistProductionDish } from "@/lib/engine/dish-catalog";
 import { incrementProductionTasteCount } from "@/lib/engine/stats";
 import { DuckDuckGoSearch, FetchPageClient, searchWithFallback } from "@/lib/engine/search";
+import { UsdaFdcClient } from "@/lib/engine/usda";
 
 export const dynamic = "force-dynamic";
 /** Pho-scale runs (recipe collect ≤30s + many unknown ingredient LLM lookups) exceed 60s on Vercel. */
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
 
         const store = await loadProductionStore();
         const dishStore = await loadProductionDishStore();
+        const usdaKey = process.env.USDA_API_KEY?.trim();
         const result = await profileDish(dish, {
           llm,
           search: {
@@ -74,6 +76,7 @@ export async function POST(request: Request) {
           pages: new FetchPageClient(stop.signal),
           store,
           dishStore,
+          ...(usdaKey ? { usda: new UsdaFdcClient(usdaKey) } : {}),
           useCache: Boolean(body.useCache),
           searchMode: body.typedLanguage ? "typed" : "native",
           onProgress: send,

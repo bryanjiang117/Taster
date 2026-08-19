@@ -1,0 +1,1014 @@
+{
+  "source": "Phenol-Explorer composition database; derived tannin/naringin/limonoid extract. Cite phenol-explorer.eu.",
+  "byName": {
+    "beer alcohol free": "beer alcohol free",
+    "beer ale": "beer ale",
+    "beer dark": "beer dark",
+    "beer regular": "beer regular",
+    "cider": "cider",
+    "walnut liquor": "walnut liquor",
+    "sherry": "sherry",
+    "wine red": "wine red",
+    "wine ros": "wine ros",
+    "wine white": "wine white",
+    "champagne": "champagne",
+    "barley whole grain flour": "barley whole grain flour",
+    "chocolate dark": "chocolate dark",
+    "chocolate milk": "chocolate milk",
+    "cocoa powder": "cocoa powder",
+    "cocoa": "cocoa powder",
+    "blackberry raw": "blackberry raw",
+    "blackcurrant raw": "blackcurrant raw",
+    "cloudberry": "cloudberry",
+    "european cranberry": "european cranberry",
+    "fox grape black": "fox grape black",
+    "gooseberry": "gooseberry",
+    "grape black": "grape black",
+    "grape green": "grape green",
+    "highbush blueberry raw": "highbush blueberry raw",
+    "blueberry": "highbush blueberry raw",
+    "red raspberry raw": "red raspberry raw",
+    "redcurrant raw": "redcurrant raw",
+    "strawberry raw": "strawberry raw",
+    "whitecurrant": "whitecurrant",
+    "apricot raw": "apricot raw",
+    "nectarine peeled": "nectarine peeled",
+    "nectarine whole": "nectarine whole",
+    "peach peeled": "peach peeled",
+    "peach whole": "peach whole",
+    "plum fresh": "plum fresh",
+    "sweet cherry raw": "sweet cherry raw",
+    "fig peeled fresh": "fig peeled fresh",
+    "apple cider peeled": "apple cider peeled",
+    "apple dessert peeled": "apple dessert peeled",
+    "apple dessert whole raw": "apple dessert whole raw",
+    "medlar": "medlar",
+    "pear peeled": "pear peeled",
+    "pear whole": "pear whole",
+    "quince peeled raw": "quince peeled raw",
+    "rhubarb raw": "rhubarb raw",
+    "banana raw": "banana raw",
+    "custard apple": "custard apple",
+    "kiwi": "kiwi",
+    "mango": "mango",
+    "persimmon fresh": "persimmon fresh",
+    "pomegranate": "pomegranate",
+    "strawberry jam": "strawberry jam",
+    "apricot jam": "apricot jam",
+    "quince jam": "quince jam",
+    "quince jelly": "quince jelly",
+    "chocolate milk beverage": "chocolate milk beverage",
+    "fox grape green pure juice": "fox grape green pure juice",
+    "grape green pure juice": "grape green pure juice",
+    "sea buckthornberry pure juice": "sea buckthornberry pure juice",
+    "grapefruit juice from concentrate": "grapefruit juice from concentrate",
+    "grapefruit pure juice": "grapefruit pure juice",
+    "grapefruit pummelo hybrid pure juice": "grapefruit pummelo hybrid pure juice",
+    "orange blond pure juice": "orange blond pure juice",
+    "pummelo pure juice": "pummelo pure juice",
+    "plum prune juice from concentrate": "plum prune juice from concentrate",
+    "plum prune pure juice": "plum prune pure juice",
+    "apple cider juice from concentrate": "apple cider juice from concentrate",
+    "apple cider pure juice": "apple cider pure juice",
+    "apple dessert juice from concentrate": "apple dessert juice from concentrate",
+    "apple dessert pure juice": "apple dessert pure juice",
+    "pear pure juice": "pear pure juice",
+    "kiwi juice from concentrate": "kiwi juice from concentrate",
+    "kiwi pure juice": "kiwi pure juice",
+    "pomegranate pure juice": "pomegranate pure juice",
+    "german camomile tea": "german camomile tea",
+    "peppermint tea": "peppermint tea",
+    "tea black bottled": "tea black bottled",
+    "black tea": "tea black infusion",
+    "tea": "tea green infusion",
+    "tea black infusion": "tea black infusion",
+    "tea green bottled": "tea green bottled",
+    "green tea": "tea green infusion",
+    "tea green infusion": "tea green infusion",
+    "tea oolong bottled": "tea oolong bottled",
+    "tea oolong infusion": "tea oolong infusion",
+    "rosemary dried": "rosemary dried",
+    "rosemary fresh": "rosemary fresh",
+    "vinegar": "vinegar",
+    "almond": "almond",
+    "cashew nut raw": "cashew nut raw",
+    "chestnut raw": "chestnut raw",
+    "hazelnut raw": "hazelnut raw",
+    "pecan nut": "pecan nut",
+    "pistachio": "pistachio",
+    "common bean others whole raw": "common bean others whole raw",
+    "common bean white whole raw": "common bean white whole raw",
+    "broad bean seed whole raw": "broad bean seed whole raw",
+    "lentils dehulled raw": "lentils dehulled raw",
+    "lentils whole raw": "lentils whole raw",
+    "avocado raw": "avocado raw",
+    "broad bean pod raw": "broad bean pod raw",
+    "green bean raw": "green bean raw",
+    "fresh pea raw": "fresh pea raw"
+  },
+  "byId": {
+    "beer alcohol free": {
+      "name": "Beer [Alcohol free]",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.1086
+        }
+      ]
+    },
+    "beer ale": {
+      "name": "Beer [Ale]",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.3871
+        }
+      ]
+    },
+    "beer dark": {
+      "name": "Beer [Dark]",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.03
+        }
+      ]
+    },
+    "beer regular": {
+      "name": "Beer [Regular]",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.3494
+        },
+        {
+          "id": "naringin",
+          "amount": 0.0008
+        }
+      ]
+    },
+    "cider": {
+      "name": "Cider",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.03
+        }
+      ]
+    },
+    "walnut liquor": {
+      "name": "Walnut, liquor",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 1.5525
+        }
+      ]
+    },
+    "sherry": {
+      "name": "Sherry",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 8.16
+        }
+      ]
+    },
+    "wine red": {
+      "name": "Wine [Red]",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 46.9015
+        },
+        {
+          "id": "naringin",
+          "amount": 0.75
+        }
+      ]
+    },
+    "wine ros": {
+      "name": "Wine [Rosé]",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 1.9976
+        }
+      ]
+    },
+    "wine white": {
+      "name": "Wine [White]",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 2.0786
+        },
+        {
+          "id": "naringin",
+          "amount": 0.23
+        }
+      ]
+    },
+    "champagne": {
+      "name": "Champagne",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.2975
+        }
+      ]
+    },
+    "barley whole grain flour": {
+      "name": "Barley, whole grain flour",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 12.1333
+        }
+      ]
+    },
+    "chocolate dark": {
+      "name": "Chocolate, dark",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 212.3593
+        }
+      ]
+    },
+    "chocolate milk": {
+      "name": "Chocolate, milk",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 19.2255
+        }
+      ]
+    },
+    "cocoa powder": {
+      "name": "Cocoa, powder",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 511.6214
+        }
+      ]
+    },
+    "blackberry raw": {
+      "name": "Blackberry, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 13.7957
+        }
+      ]
+    },
+    "blackcurrant raw": {
+      "name": "Blackcurrant, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 1.17
+        }
+      ]
+    },
+    "cloudberry": {
+      "name": "Cloudberry",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 1.7
+        }
+      ]
+    },
+    "european cranberry": {
+      "name": "European cranberry",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 4.2
+        }
+      ]
+    },
+    "fox grape black": {
+      "name": "Fox grape [Black]",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 7.4
+        }
+      ]
+    },
+    "gooseberry": {
+      "name": "Gooseberry",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 2.11
+        }
+      ]
+    },
+    "grape black": {
+      "name": "Grape [Black]",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 14.03
+        }
+      ]
+    },
+    "grape green": {
+      "name": "Grape [Green]",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 3.6606
+        }
+      ]
+    },
+    "highbush blueberry raw": {
+      "name": "Highbush blueberry, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 1.11
+        }
+      ]
+    },
+    "red raspberry raw": {
+      "name": "Red raspberry, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 5.7314
+        }
+      ]
+    },
+    "redcurrant raw": {
+      "name": "Redcurrant, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 2.9786
+        }
+      ]
+    },
+    "strawberry raw": {
+      "name": "Strawberry, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 9.1432
+        }
+      ]
+    },
+    "whitecurrant": {
+      "name": "Whitecurrant",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 1.0
+        }
+      ]
+    },
+    "apricot raw": {
+      "name": "Apricot, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 6.5929
+        }
+      ]
+    },
+    "nectarine peeled": {
+      "name": "Nectarine, peeled",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 20.8221
+        }
+      ]
+    },
+    "nectarine whole": {
+      "name": "Nectarine, whole",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 14.6638
+        }
+      ]
+    },
+    "peach peeled": {
+      "name": "Peach, peeled",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 48.3199
+        }
+      ]
+    },
+    "peach whole": {
+      "name": "Peach, whole",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 2.33
+        }
+      ]
+    },
+    "plum fresh": {
+      "name": "Plum, fresh",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 46.9018
+        }
+      ]
+    },
+    "sweet cherry raw": {
+      "name": "Sweet cherry, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 15.0657
+        }
+      ]
+    },
+    "fig peeled fresh": {
+      "name": "Fig, peeled, fresh",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.15
+        }
+      ]
+    },
+    "apple cider peeled": {
+      "name": "Apple [Cider], peeled",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 60.2457
+        }
+      ]
+    },
+    "apple dessert peeled": {
+      "name": "Apple [Dessert], peeled",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 37.4337
+        }
+      ]
+    },
+    "apple dessert whole raw": {
+      "name": "Apple [Dessert], whole, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 24.1539
+        }
+      ]
+    },
+    "medlar": {
+      "name": "Medlar",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 2.72
+        }
+      ]
+    },
+    "pear peeled": {
+      "name": "Pear, peeled",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 3.4217
+        }
+      ]
+    },
+    "pear whole": {
+      "name": "Pear, whole",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 4.0489
+        }
+      ]
+    },
+    "quince peeled raw": {
+      "name": "Quince, peeled, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 5.17
+        }
+      ]
+    },
+    "rhubarb raw": {
+      "name": "Rhubarb, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 3.28
+        }
+      ]
+    },
+    "banana raw": {
+      "name": "Banana, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 1.4509
+        }
+      ]
+    },
+    "custard apple": {
+      "name": "Custard apple",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 24.94
+        }
+      ]
+    },
+    "kiwi": {
+      "name": "Kiwi",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.6956
+        }
+      ]
+    },
+    "mango": {
+      "name": "Mango",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 1.72
+        }
+      ]
+    },
+    "persimmon fresh": {
+      "name": "Persimmon, fresh",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.98
+        }
+      ]
+    },
+    "pomegranate": {
+      "name": "Pomegranate",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 1.1
+        }
+      ]
+    },
+    "strawberry jam": {
+      "name": "Strawberry, jam",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.9
+        }
+      ]
+    },
+    "apricot jam": {
+      "name": "Apricot, jam",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.97
+        }
+      ]
+    },
+    "quince jam": {
+      "name": "Quince, jam",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 7.1345
+        }
+      ]
+    },
+    "quince jelly": {
+      "name": "Quince, jelly",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 29.3754
+        }
+      ]
+    },
+    "chocolate milk beverage": {
+      "name": "Chocolate, milk, beverage",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 20.33
+        }
+      ]
+    },
+    "fox grape green pure juice": {
+      "name": "Fox grape [Green], pure juice",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 5.9
+        }
+      ]
+    },
+    "grape green pure juice": {
+      "name": "Grape [Green], pure juice",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 3.8674
+        }
+      ]
+    },
+    "sea buckthornberry pure juice": {
+      "name": "Sea-buckthornberry, pure juice",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 2.65
+        }
+      ]
+    },
+    "grapefruit juice from concentrate": {
+      "name": "Grapefruit, juice from concentrate",
+      "compounds": [
+        {
+          "id": "naringin",
+          "amount": 37.76
+        }
+      ]
+    },
+    "grapefruit pure juice": {
+      "name": "Grapefruit, pure juice",
+      "compounds": [
+        {
+          "id": "naringin",
+          "amount": 30.7787
+        }
+      ]
+    },
+    "grapefruit pummelo hybrid pure juice": {
+      "name": "Grapefruit/Pummelo hybrid, pure juice",
+      "compounds": [
+        {
+          "id": "naringin",
+          "amount": 49.15
+        }
+      ]
+    },
+    "orange blond pure juice": {
+      "name": "Orange [Blond], pure juice",
+      "compounds": [
+        {
+          "id": "naringin",
+          "amount": 0.0701
+        }
+      ]
+    },
+    "pummelo pure juice": {
+      "name": "Pummelo, pure juice",
+      "compounds": [
+        {
+          "id": "naringin",
+          "amount": 8.4833
+        }
+      ]
+    },
+    "plum prune juice from concentrate": {
+      "name": "Plum, prune, juice from concentrate",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 17.9
+        }
+      ]
+    },
+    "plum prune pure juice": {
+      "name": "Plum, prune, pure juice",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 24.7
+        }
+      ]
+    },
+    "apple cider juice from concentrate": {
+      "name": "Apple [Cider], juice from concentrate",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.1067
+        }
+      ]
+    },
+    "apple cider pure juice": {
+      "name": "Apple [Cider], pure juice",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 22.6478
+        }
+      ]
+    },
+    "apple dessert juice from concentrate": {
+      "name": "Apple [Dessert], juice from concentrate",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.11
+        }
+      ]
+    },
+    "apple dessert pure juice": {
+      "name": "Apple [Dessert], pure juice",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 48.4437
+        }
+      ]
+    },
+    "pear pure juice": {
+      "name": "Pear, pure juice",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 3.2357
+        }
+      ]
+    },
+    "kiwi juice from concentrate": {
+      "name": "Kiwi, juice from concentrate",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.15
+        }
+      ]
+    },
+    "kiwi pure juice": {
+      "name": "Kiwi, pure juice",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.3767
+        }
+      ]
+    },
+    "pomegranate pure juice": {
+      "name": "Pomegranate, pure juice",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.3685
+        }
+      ]
+    },
+    "german camomile tea": {
+      "name": "German camomile, tea",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 2.07
+        }
+      ]
+    },
+    "peppermint tea": {
+      "name": "Peppermint, tea",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 10.23
+        }
+      ]
+    },
+    "tea black bottled": {
+      "name": "Tea [Black], bottled",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 7.1467
+        }
+      ]
+    },
+    "tea black infusion": {
+      "name": "Tea [Black], infusion",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 59.204
+        }
+      ]
+    },
+    "tea green bottled": {
+      "name": "Tea [Green], bottled",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 32.078
+        }
+      ]
+    },
+    "tea green infusion": {
+      "name": "Tea [Green], infusion",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 70.9046
+        }
+      ]
+    },
+    "tea oolong bottled": {
+      "name": "Tea [Oolong], bottled",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 20.91
+        }
+      ]
+    },
+    "tea oolong infusion": {
+      "name": "Tea [Oolong], infusion",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 35.7198
+        }
+      ]
+    },
+    "rosemary dried": {
+      "name": "Rosemary, dried",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 2.7
+        }
+      ]
+    },
+    "rosemary fresh": {
+      "name": "Rosemary, fresh",
+      "compounds": [
+        {
+          "id": "naringin",
+          "amount": 55.05
+        }
+      ]
+    },
+    "vinegar": {
+      "name": "Vinegar",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 1.7795
+        }
+      ]
+    },
+    "almond": {
+      "name": "Almond",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 4.9258
+        }
+      ]
+    },
+    "cashew nut raw": {
+      "name": "Cashew nut, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 1.1
+        }
+      ]
+    },
+    "chestnut raw": {
+      "name": "Chestnut, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.05
+        }
+      ]
+    },
+    "hazelnut raw": {
+      "name": "Hazelnut, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 5.7
+        }
+      ]
+    },
+    "pecan nut": {
+      "name": "Pecan nut",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 16.7
+        }
+      ]
+    },
+    "pistachio": {
+      "name": "Pistachio",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 6.9
+        }
+      ]
+    },
+    "common bean others whole raw": {
+      "name": "Common bean [Others], whole, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 7.42
+        }
+      ]
+    },
+    "common bean white whole raw": {
+      "name": "Common bean [White], whole, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.13
+        }
+      ]
+    },
+    "broad bean seed whole raw": {
+      "name": "Broad bean seed, whole, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 49.37
+        }
+      ]
+    },
+    "lentils dehulled raw": {
+      "name": "Lentils, dehulled, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.12
+        }
+      ]
+    },
+    "lentils whole raw": {
+      "name": "Lentils, whole, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 4.725
+        }
+      ]
+    },
+    "avocado raw": {
+      "name": "Avocado, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.5471
+        }
+      ]
+    },
+    "broad bean pod raw": {
+      "name": "Broad bean pod, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 130.95
+        }
+      ]
+    },
+    "green bean raw": {
+      "name": "Green bean, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 2.4063
+        }
+      ]
+    },
+    "fresh pea raw": {
+      "name": "Fresh pea, raw",
+      "compounds": [
+        {
+          "id": "tannin",
+          "amount": 0.02
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "source": "Umami Information Center / Ninomiya 1998 published free amino acid tables. Snapshot, not a live scrape.",
+  "byName": {
+    "kombu": "kombu",
+    "kelp": "kombu",
+    "konbu": "kombu",
+    "nori": "nori",
+    "laver": "nori",
+    "wakame": "wakame",
+    "dried shiitake": "dried-shiitake",
+    "shiitake": "dried-shiitake",
+    "fresh shiitake": "fresh-shiitake",
+    "katsuobushi": "katsuobushi",
+    "bonito flakes": "katsuobushi",
+    "soy sauce": "soy-sauce",
+    "parmesan": "parmesan",
+    "tomato ripe": "tomato",
+    "tomato": "tomato",
+    "tomatoes": "tomato",
+    "green tea": "green-tea",
+    "scallop": "scallop",
+    "sardine": "sardine"
+  },
+  "byId": {
+    "kombu": {
+      "name": "Kombu",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 1600
+        }
+      ]
+    },
+    "nori": {
+      "name": "Nori",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 1378
+        }
+      ]
+    },
+    "wakame": {
+      "name": "Wakame",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 9
+        }
+      ]
+    },
+    "dried-shiitake": {
+      "name": "Dried shiitake",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 1060
+        },
+        {
+          "id": "gmp",
+          "amount": 150
+        }
+      ]
+    },
+    "fresh-shiitake": {
+      "name": "Fresh shiitake",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 70
+        }
+      ]
+    },
+    "katsuobushi": {
+      "name": "Katsuobushi",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 30
+        },
+        {
+          "id": "imp",
+          "amount": 600
+        }
+      ]
+    },
+    "soy-sauce": {
+      "name": "Soy sauce",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 800
+        }
+      ]
+    },
+    "parmesan": {
+      "name": "Parmesan",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 1400
+        }
+      ]
+    },
+    "tomato": {
+      "name": "Tomato, ripe",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 200
+        }
+      ]
+    },
+    "green-tea": {
+      "name": "Green tea",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 220
+        }
+      ]
+    },
+    "scallop": {
+      "name": "Scallop",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 140
+        },
+        {
+          "id": "gmp",
+          "amount": 10
+        }
+      ]
+    },
+    "sardine": {
+      "name": "Sardine",
+      "compounds": [
+        {
+          "id": "glutamate",
+          "amount": 280
+        },
+        {
+          "id": "imp",
+          "amount": 280
+        }
+      ]
+    }
+  }
+}

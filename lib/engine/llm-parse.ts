@@ -19,6 +19,10 @@ export type RecipeExtractJson = {
     amount?: number;
     unit?: string;
     role?: string;
+    mix?: {
+      intensity?: number;
+      scale?: Partial<TasteProfile>;
+    };
   }>;
   processes?: ProcessEffect[];
   cookingSteps?: string[];
@@ -26,6 +30,32 @@ export type RecipeExtractJson = {
 
 export function parseIngredientRole(role: string | undefined): IngredientRole {
   return role?.trim().toLowerCase() === "out" ? "out" : "in";
+}
+
+function clampMixFactor(value: number | undefined, fallback: number): number {
+  if (value == null || Number.isNaN(value)) return fallback;
+  return Math.min(3, Math.max(0, value));
+}
+
+export function parseIngredientMix(
+  mix: { intensity?: number; scale?: Partial<TasteProfile> } | undefined,
+): { intensity?: number; scale?: Partial<TasteProfile> } | undefined {
+  if (!mix || typeof mix !== "object") return undefined;
+  const scale = mix.scale
+    ? {
+        sweet: mix.scale.sweet != null ? clampMixFactor(mix.scale.sweet, 1) : undefined,
+        sour: mix.scale.sour != null ? clampMixFactor(mix.scale.sour, 1) : undefined,
+        salty: mix.scale.salty != null ? clampMixFactor(mix.scale.salty, 1) : undefined,
+        spicy: mix.scale.spicy != null ? clampMixFactor(mix.scale.spicy, 1) : undefined,
+        umami: mix.scale.umami != null ? clampMixFactor(mix.scale.umami, 1) : undefined,
+        bitter: mix.scale.bitter != null ? clampMixFactor(mix.scale.bitter, 1) : undefined,
+      }
+    : undefined;
+  const hasScale = Boolean(scale && Object.values(scale).some((value) => value != null));
+  return {
+    intensity: mix.intensity != null ? clampMixFactor(mix.intensity, 1) : undefined,
+    scale: hasScale ? scale : undefined,
+  };
 }
 
 const EMPTY_TASTE: TasteProfile = {
@@ -75,6 +105,7 @@ export function recipeFromExtractJson(
         item.name.trim(),
       ),
       role: parseIngredientRole(item.role),
+      mix: parseIngredientMix(item.mix),
     }));
   if (!ingredients.length) return null;
   return {

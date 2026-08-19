@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   delayForPhase,
   DISH_PLACEHOLDERS,
-  shuffleRest,
+  shufflePhrases,
   stepTypewriter,
   type TypewriterState,
   typewriterText,
@@ -26,7 +26,10 @@ export function useDishPlaceholder(active: boolean): string {
   const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
-    setPhrases(shuffleRest(DISH_PLACEHOLDERS));
+    // Shuffle after mount so the first paint matches SSR, then start on a random dish.
+    const shuffled = shufflePhrases(DISH_PLACEHOLDERS);
+    setPhrases(shuffled);
+    setState(heldPhrase(shuffled, 0));
   }, []);
 
   useEffect(() => {

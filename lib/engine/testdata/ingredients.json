@@ -90,7 +90,7 @@
     "ingredient": "lime",
     "taste": {
       "sweet": 1,
-      "sour": 10,
+      "sour": 9,
       "salty": 0,
       "spicy": 0,
       "umami": 0,
@@ -105,7 +105,7 @@
     "ingredient": "lemon",
     "taste": {
       "sweet": 1,
-      "sour": 10,
+      "sour": 9,
       "salty": 0,
       "spicy": 0,
       "umami": 0,
@@ -486,7 +486,7 @@
       "sweet": 0,
       "sour": 0,
       "salty": 0,
-      "spicy": 2.5,
+      "spicy": 0.2,
       "umami": 0,
       "bitter": 2
     },
@@ -790,7 +790,7 @@
     "ingredient": "lime juice",
     "taste": {
       "sweet": 0.21249999999999997,
-      "sour": 10,
+      "sour": 9.5,
       "salty": 0.005,
       "spicy": 0,
       "umami": 0.06666666666666667,
@@ -981,11 +981,11 @@
   {
     "ingredient": "dried shrimp",
     "taste": {
-      "sweet": 0.0625,
+      "sweet": 0,
       "sour": 0,
-      "salty": 8.75,
+      "salty": 7,
       "spicy": 0,
-      "umami": 0,
+      "umami": 8,
       "bitter": 0
     },
     "derivedFrom": [],

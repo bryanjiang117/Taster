@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  calibrateLeafPrompt,
   canonicalizeIngredientNamesPrompt,
   classifyTasteInputPrompt,
+  confirmFoodShortlistsPrompt,
   culinaryContextLine,
-  ingredientLookupPrompt,
+  estimateLeafPrompt,
+  isCommonIngredientPrompt,
   recipeExtractPrompt,
 } from "./llm";
 
@@ -39,50 +42,102 @@ describe("culinary context in LLM name prompts", () => {
     expect(canonicalize).toContain("limón");
     expect(canonicalize).toContain("lime");
     expect(canonicalize).toContain("Peruvian");
+    expect(canonicalize.toLowerCase()).toContain("sweet chili");
+    expect(canonicalize.toLowerCase()).toContain("chili oil");
 
     const extract = recipeExtractPrompt("page text", "https://example.com/ceviche", context);
     expect(extract).toContain("Peruvian");
     expect(extract).toContain("page text");
     expect(extract).toMatch(/role to "in" or "out"/);
+    expect(extract.toLowerCase()).toContain("common sense");
+    expect(extract).toContain("mix.intensity");
+    expect(extract.toLowerCase()).toContain("freshly cracked");
   });
 });
 
-describe("ingredient lookup prompt", () => {
-  it("anchors 10 sour to lemon and lime and tells the model not to hedge", () => {
-    const prompt = ingredientLookupPrompt("yuzu");
+describe("leaf calibration prompt", () => {
+  it("reserves 10s for the most intense form and scores juice above whole fruit", () => {
+    const prompt = calibrateLeafPrompt("yuzu", {
+      sweet: 1,
+      sour: 8,
+      salty: 0,
+      spicy: 0,
+      umami: 0,
+      bitter: 1,
+    });
     expect(prompt).toContain("yuzu");
     expect(prompt.toLowerCase()).toContain("lemon");
-    expect(prompt.toLowerCase()).toContain("lime");
-    expect(prompt).toMatch(/10 sour/i);
-    expect(prompt.toLowerCase()).toContain("common sense");
-  });
-
-  it("asks for a mouthful vector on every dimension, not chemistry-as-score", () => {
-    const prompt = ingredientLookupPrompt("parmesan");
-    expect(prompt.toLowerCase()).toContain("sweetindex");
-    expect(prompt.toLowerCase()).toContain("sourindex");
-    expect(prompt.toLowerCase()).toContain("saltyindex");
-    expect(prompt.toLowerCase()).toContain("spicyindex");
-    expect(prompt.toLowerCase()).toContain("umamiindex");
-    expect(prompt.toLowerCase()).toContain("bitterindex");
-    expect(prompt.toLowerCase()).toContain("sodium");
-    expect(prompt.toLowerCase()).toContain("glutamate");
+    expect(prompt.toLowerCase()).toContain("juice");
+    expect(prompt).toMatch(/9\.5/);
+    expect(prompt.toLowerCase()).toContain("invent");
+    expect(prompt.toLowerCase()).not.toContain("citrus juice is as sour as the fruit");
   });
 
   it("anchors everyday foods so fruit, onion, and pepper match how they taste", () => {
-    const prompt = ingredientLookupPrompt("orange");
+    const prompt = calibrateLeafPrompt("orange", {
+      sweet: 7,
+      sour: 2,
+      salty: 0,
+      spicy: 0,
+      umami: 0,
+      bitter: 0,
+    });
     expect(prompt.toLowerCase()).toContain("orange");
     expect(prompt.toLowerCase()).toContain("onion");
     expect(prompt.toLowerCase()).toContain("black pepper");
-    expect(prompt).toMatch(/mouthful|how it tastes/i);
-    expect(prompt).toMatch(/7/);
-    expect(prompt.toLowerCase()).toContain("scoville");
+    expect(prompt).toMatch(/0\.2/);
+    expect(prompt.toLowerCase()).toContain("chili");
   });
+});
 
-  it("asks for compact JSON so a long reasoning field cannot truncate the payload", () => {
-    const prompt = ingredientLookupPrompt("black pepper");
-    expect(prompt.toLowerCase()).toContain("compact");
-    expect(prompt.toLowerCase()).toContain("short sentence");
+describe("leaf estimate prompt", () => {
+  it("asks for a mouthful of the named food and keeps distinct names distinct", () => {
+    const prompt = estimateLeafPrompt("soft shell crab");
+    expect(prompt).toContain("soft shell crab");
+    expect(prompt.toLowerCase()).toContain("mouthful");
+    expect(prompt.toLowerCase()).toContain("thai chili");
+    expect(prompt.toLowerCase()).toContain("soft shell crab");
+    expect(prompt).toMatch(/10 umami/i);
+    expect(prompt.toLowerCase()).not.toContain("just chili");
+  });
+});
+
+describe("food identity prompt", () => {
+  it("asks Gemini to pick or reject a shortlist per source in one call", () => {
+    const prompt = confirmFoodShortlistsPrompt(
+      "chili oil",
+      [
+        {
+          source: "usda",
+          hits: [
+            { id: "1", name: "Oil, canola" },
+            { id: "2", name: "Chili oil" },
+          ],
+        },
+        { source: "foodb", hits: [{ id: "3", name: "Oil palm" }] },
+      ],
+      {
+        dish: "mapo tofu",
+        nativeName: "麻婆豆腐",
+        culture: "Sichuan",
+      },
+    );
+    expect(prompt).toContain("chili oil");
+    expect(prompt).toContain("Oil, canola");
+    expect(prompt).toContain("Chili oil");
+    expect(prompt.toLowerCase()).toContain("mapo");
+    expect(prompt.toLowerCase()).toContain("canola");
+    expect(prompt).toMatch(/"usda":\s*1/);
+    expect(prompt).toMatch(/null/);
+  });
+});
+
+describe("common ingredient prompt", () => {
+  it("asks whether the name is pantry versus a dish that needs a recipe", () => {
+    const prompt = isCommonIngredientPrompt("doubanjiang");
+    expect(prompt).toContain("doubanjiang");
+    expect(prompt.toLowerCase()).toContain("pantry");
+    expect(prompt.toLowerCase()).toContain("recipe");
   });
 });
 

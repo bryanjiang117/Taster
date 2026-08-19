@@ -1,4 +1,4 @@
-import { weightedTasteFromIngredients } from "./concentration";
+import { combineRecipeTaste } from "./combine";
 import { normalizeIngredientName } from "./normalize";
 import { emptyTaste, TASTE_DIMENSIONS, type TasteProfile } from "./taste";
 import type { IngredientStore } from "./store";
@@ -38,7 +38,7 @@ export function tasteOfRecipe(recipe: Recipe, store: IngredientStore): TasteProf
     recipe.finalVolumeMl && recipe.finalVolumeMl > 0
       ? recipe.finalVolumeMl
       : ingredients.reduce((sum, item) => sum + item.volumeMl, 0) || 1;
-  return weightedTasteFromIngredients(ingredients, volume);
+  return combineRecipeTaste(ingredients, volume);
 }
 
 function distance(a: TasteProfile, b: TasteProfile): number {
