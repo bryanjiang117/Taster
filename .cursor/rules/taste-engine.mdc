@@ -14,6 +14,7 @@ Final numeric taste scores are computed in this folder. Do not generate them wit
 - Search recipes in the origin culture’s language by default. Typed-language mode searches in the user’s query language instead; both modes share one dish cache row.
 - A recipe counts only if the live page fetch returned 2xx. URL Context may parse a JS shell after that; 4xx/5xx pages are skipped. Captcha/human-check redirects still count as 2xx; URL Context and stored links use the pre-challenge recipe URL, not the challenge page.
 - Shared dish profiles live in Turso `dishes` (running mean, `timesTasted`, last snapshot). LLM matches the query to a row; it does not invent scores.
+- Site-wide taste count lives in Turso `stats` (`taste_count`). Increment only on a successful top-level profile, not on reject/error/Stop.
 - Translate extracted ingredient names to English before listing or resolving. Gemini canonicalizes every name against the ingredient catalog (`canonicalizeIngredientNames(names, catalog, culinaryContext)`): one singular grocery name, reuse a catalog row when it is the same food, using the dish's cuisine/language so false friends (limón → lime in ceviche) do not collapse onto the wrong catalog row.
 - Classify the query first (dish / ingredient / reject). Ingredients use the ingredient catalog only (no recipe search). Brands and gibberish are rejected.
 - Resolve every unique listed ingredient (not only the ≥50% representative set).

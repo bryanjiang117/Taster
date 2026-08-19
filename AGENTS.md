@@ -29,6 +29,7 @@ Restart the dev server after changing `.env`. Never commit `.env`. The live cata
 - Recipe extract tags each ingredient `in` (cooked into the dish) or `out` (side/serving). Only `in` affects scores. Out-only items stay in the ingredient list quieter and appear as an “Often served with” list under the scores, with primary flavors.
 - Search in the dish’s origin language (authentic). **Typed language** mode searches in whatever language the user typed (internationalized). Both write to the same dish cache row.
 - Shared dish cache in Turso `dishes`: LLM match → reuse stored average when that setting is on; otherwise run the pipeline and fold into the running mean unless the 6-D Euclidean distance is > 4. Cache hits still increment `timesTasted`.
+- Global taste count in Turso `stats` (`taste_count`): +1 on every successful profile the user gets back (dish, ingredient, cache hit). Rejects, errors, and Stop do not count. Shown under the lede; ticks up when `done` arrives.
 - When changing scoring math, update tests in `lib/engine/*.test.ts` first.
 - Keep the UI to: dish name in, profile out, plus the two mode toggles and Stop while tasting. Do not add extra screens unless asked.
 
@@ -37,6 +38,7 @@ Restart the dev server after changing `.env`. Never commit `.env`. The live cata
 - `lib/engine/` — taste engine (pure + injectable I/O)
 - `lib/engine/catalog.ts` — Turso ingredient load/persist (`loadProductionStore`, `persistProductionLearned`)
 - `lib/engine/dish-catalog.ts` — Turso dish cache (`loadProductionDishStore`, `persistProductionDish`)
+- `lib/engine/stats.ts` — Turso global taste count
 - `lib/engine/testdata/ingredients.json` — offline snapshot for unit tests only
-- `app/` — Next.js UI, 5-line SSE progress log, and `POST /api/profile`
+- `app/` — Next.js UI, 5-line SSE progress log, `POST /api/profile`, `GET /api/stats`
 - `docs/ai/` — longer design notes for agents (catalog details in `architecture.md`)

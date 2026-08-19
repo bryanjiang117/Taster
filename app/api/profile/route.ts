@@ -4,6 +4,7 @@ import { profileDish } from "@/lib/engine/pipeline";
 import type { ProgressEvent } from "@/lib/engine/progress";
 import { loadProductionStore, persistProductionLearned } from "@/lib/engine/catalog";
 import { loadProductionDishStore, persistProductionDish } from "@/lib/engine/dish-catalog";
+import { incrementProductionTasteCount } from "@/lib/engine/stats";
 import { DuckDuckGoSearch, FetchPageClient, searchWithFallback } from "@/lib/engine/search";
 
 export const dynamic = "force-dynamic";
@@ -81,7 +82,13 @@ export async function POST(request: Request) {
           signal: stop.signal,
         });
 
-        send({ type: "done", totalMs: Date.now() - started, result });
+        let totalTastes: number | undefined;
+        try {
+          totalTastes = await incrementProductionTasteCount();
+        } catch {
+          /* tasting succeeded; don't fail the stream over the counter */
+        }
+        send({ type: "done", totalMs: Date.now() - started, result, totalTastes });
       } catch (error) {
         if (isAbortError(error) || stop.signal.aborted || request.signal.aborted) {
           return;

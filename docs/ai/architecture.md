@@ -23,6 +23,7 @@ input
     → polarizeTaste vs the loudest of the 6 (TASTE_POLARIZE_POWER; no absolute cutoff)
     → round 0–10 + confidence; footnote for out-only accompaniments
     → upsert Turso `dishes` (running mean unless Euclidean outlier > 4; timesTasted always += 1)
+    → successful profile (dish or ingredient): stats.taste_count += 1
 ```
 
 Do **not** return the raw concentration as the UI score for dishes. `pipeline.ts` already calls `toPerceptualTaste` after `weightedTasteFromIngredients`, then `polarizeTaste`. Tune loudness with `TASTE_SCALE_TAU` and contrast vs the peak with `TASTE_POLARIZE_POWER` in `lib/engine/taste.ts`, not by asking the LLM for scores. Pure ingredient queries skip dilution and return the catalog intrinsic vector (already 0–10: how a mouthful of that food tastes). Concentration maps in `tasteFromComposition` (`COMPOSITION_TASTE_TAU` for sugar/sodium/glutamate; pH and log scoville) are perceptual, not linear-to-concentrate. A mouthful `taste` overlay or any `*Index` wins when chemistry would undershoot or overshoot.
@@ -37,13 +38,14 @@ Hard cases (ambiguous origin, fermented/compound ingredients, LLM-only fallback)
 | Recipe merge | `representative.ts` | name normalize | no scoring |
 | Ingredient cache | `store.ts`, `catalog.ts` | Turso (`TURSO_DATABASE_URL`) | no Gemini |
 | Dish cache | `dish-cache.ts`, `dish-store.ts`, `dish-catalog.ts` | Turso `dishes`; LLM match only | no score invention |
+| Taste count | `stats.ts` | Turso `stats` | no scoring |
 | Resolver | `resolve.ts` | store + lookup callback | no HTTP of its own |
 | Pipeline | `pipeline.ts` | `LlmClient`, `SearchClient`, `PageClient`, `onProgress` | no Gemini SDK types |
 | Adapters | `llm.ts`, `search.ts` | Gemini (`@google/genai`), DuckDuckGo/cheerio fallback | no score formulas |
-| API | `app/api/profile/route.ts` | pipeline + SSE progress events | no extra business rules |
+| API | `app/api/profile/route.ts`, `app/api/stats/route.ts` | pipeline + SSE progress events + global taste count | no extra scoring rules |
 | UI | `app/page.tsx`, `app/progress-log.tsx` | `/api/profile` stream | no scoring |
 
-`POST /api/profile` body: `{ dish, useCache?, typedLanguage? }`. SSE stream of `{type:"step"}`, `{type:"ingredients"}` (running tally from fetched recipes, or the cached snapshot on a hit), then `{type:"done", result}` or `{type:"error"}`. Result may include `timesTasted` and `fromCache`. `maxDuration` is 600s (Vercel); the route also emits SSE comment keepalives every 15s so HTTP/1.1 proxies do not drop the connection during long silent Gemini ingredient lookups. If the stream closes without `done`/`error` (platform kill or idle drop), `readProgressStream` returns `"incomplete"` and the UI shows a timeout error instead of leaving a frozen running log step. The UI shows a 5-line scrolling log, two On/Off modes (reuse cache, typed-language search), a live ingredient list, and a **Stop** button while a taste is in flight. Stop aborts the fetch and cancels the SSE reader immediately (`lib/ui/progress-stream.ts`); waiting only on `reader.read()` does not stop. The API then cancels the pipeline (`AbortSignal` on `profileDish`, page fetches, and DuckDuckGo search) via stream `cancel`, `request.signal`, or a failed enqueue, and does not persist the dish profile for that run. Newly resolved ingredient vectors are written to Turso as soon as each one is learned (`INSERT OR IGNORE`), so a mid-run timeout still keeps clove/star anise/etc. that finished before the cut-off. Each extract also prints to the **server** console (`[taster] used|other-dish|too-few|empty` plus title, URL, and ingredient list) so empty-recipe failures can be debugged without extra UI.
+`POST /api/profile` body: `{ dish, useCache?, typedLanguage? }`. SSE stream of `{type:"step"}`, `{type:"ingredients"}` (running tally from fetched recipes, or the cached snapshot on a hit), then `{type:"done", result, totalTastes?}` or `{type:"error"}`. Result may include `timesTasted` and `fromCache`. `totalTastes` is the site-wide counter after this successful run. `GET /api/stats` returns `{ totalTastes }` for the landing-page number. The counter increments only when the API is about to emit `done` (dish, ingredient, or cache hit). Rejects, errors, and Stop do not increment. If the increment fails, the profile still streams; `totalTastes` is omitted. `maxDuration` is 600s (Vercel); the route also emits SSE comment keepalives every 15s so HTTP/1.1 proxies do not drop the connection during long silent Gemini ingredient lookups. If the stream closes without `done`/`error` (platform kill or idle drop), `readProgressStream` returns `"incomplete"` and the UI shows a timeout error instead of leaving a frozen running log step. The UI shows a 5-line scrolling log, two On/Off modes (reuse cache, typed-language search), a live ingredient list, a **Stop** button while a taste is in flight, and a global taste count under the lede. Stop aborts the fetch and cancels the SSE reader immediately (`lib/ui/progress-stream.ts`); waiting only on `reader.read()` does not stop. The API then cancels the pipeline (`AbortSignal` on `profileDish`, page fetches, and DuckDuckGo search) via stream `cancel`, `request.signal`, or a failed enqueue, and does not persist the dish profile for that run. Newly resolved ingredient vectors are written to Turso as soon as each one is learned (`INSERT OR IGNORE`), so a mid-run timeout still keeps clove/star anise/etc. that finished before the cut-off. Each extract also prints to the **server** console (`[taster] used|other-dish|too-few|empty` plus title, URL, and ingredient list) so empty-recipe failures can be debugged without extra UI.
 
 Inject fakes in tests. Production wires `GeminiLlm` + `searchWithFallback(GeminiSearch, DuckDuckGoSearch)` (always merge both, in parallel), expands native/English recipe queries, fetches HTML first (keeping JSON-LD), then URL Context if the live page returned 2xx but the HTML extract is too thin. HTTP error pages are skipped and not counted. Captcha/human-check redirects keep the original recipe URL for URL Context and ingredient links. If the first recipes disagree, search continues until the larger sample is filled or time runs out. Gemini JSON is parsed in `llm-parse.ts`; if a long `reasoning` string is cut off at the output cap, the parser closes the string and braces so the taste vector still loads.
 
@@ -89,6 +91,18 @@ CREATE TABLE IF NOT EXISTS dishes (
   name TEXT PRIMARY KEY,   -- normalizeIngredientName(canonicalName)
   record TEXT NOT NULL     -- JSON CachedDish
 );
+```
+
+## Global taste count
+
+Site-wide counter in the same Turso database, table `stats`. Every successful top-level profile (dish, ingredient, or reuse-cache hit) increments `taste_count` once, in `POST /api/profile` right before `done`. Rejects, errors, and Stop do not. Starts at 0; not backfilled from per-dish `timesTasted`. Tests: `lib/engine/stats.test.ts` (in-memory `file:` libSQL).
+
+```sql
+CREATE TABLE IF NOT EXISTS stats (
+  key TEXT PRIMARY KEY,
+  value INTEGER NOT NULL
+);
+INSERT OR IGNORE INTO stats (key, value) VALUES ('taste_count', 0);
 ```
 
 ## Changing scores

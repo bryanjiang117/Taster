@@ -34,6 +34,7 @@ export default function HomePage() {
   const [totalMs, setTotalMs] = useState<number | null>(null);
   const [useCache, setUseCache] = useState(false);
   const [typedLanguage, setTypedLanguage] = useState(false);
+  const [totalTastes, setTotalTastes] = useState<number | null>(null);
   const placeholder = useDishPlaceholder(!dish && !loading);
   const abortRef = useRef<AbortController | null>(null);
   const dishInputRef = useRef<HTMLInputElement | null>(null);
@@ -50,6 +51,23 @@ export default function HomePage() {
     setUseCache(readFlag(USE_CACHE_KEY));
     setTypedLanguage(readFlag(TYPED_LANGUAGE_KEY));
     return () => abortRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/stats")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = (await response.json()) as { totalTastes?: number };
+        const fetched = data.totalTastes;
+        if (!cancelled && typeof fetched === "number") {
+          setTotalTastes((current) => current ?? fetched);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -95,7 +113,10 @@ export default function HomePage() {
       afterScroll = window.setTimeout(startArrive, 200);
     }
 
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: "smooth",
+    });
 
     // Prefer scrollend; fall back if the browser never fires it (already at bottom / older engines).
     const fallback = window.setTimeout(afterScrollEnds, 900);
@@ -173,6 +194,9 @@ export default function HomePage() {
           } else if (event.type === "done") {
             setTotalMs(event.totalMs);
             setResult(event.result as ApiResult);
+            if (typeof event.totalTastes === "number") {
+              setTotalTastes(event.totalTastes);
+            }
           } else if (event.type === "error") {
             setTotalMs(event.totalMs);
             setError(event.error);
@@ -217,7 +241,14 @@ export default function HomePage() {
   return (
     <main>
       <h1>Taster</h1>
-      <p className="lede">Type a dish. Get a taste profile.</p>
+      <div className="intro-copy">
+        <p className="lede">Type a dish. Get a taste profile.</p>
+        {totalTastes != null ? (
+          <p className="taste-count" aria-live="polite">
+            {formatTasteCount(totalTastes)}
+          </p>
+        ) : null}
+      </div>
 
       <form onSubmit={onSubmit}>
         <div className="dish-field">
@@ -276,10 +307,7 @@ export default function HomePage() {
           <header>
             <div className="sheet-title">
               <strong>{result.dish}</strong>
-              <span
-                className="sheet-mark"
-                aria-hidden="true"
-              />
+              <span className="sheet-mark" aria-hidden="true" />
             </div>
             <span>
               {result.origin.nativeName} · {result.origin.country}
@@ -425,4 +453,9 @@ function label(dim: string): string {
 
 function formatScore(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function formatTasteCount(n: number): string {
+  const count = n.toLocaleString("en-US");
+  return n === 1 ? "1 taste" : `${count} tastes`;
 }

@@ -13,6 +13,7 @@ export type ProgressDoneEvent = {
   type: "done";
   totalMs: number;
   result: unknown;
+  totalTastes?: number;
 };
 
 export type ProgressErrorEvent = {
