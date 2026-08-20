@@ -155,5 +155,7 @@ describe("classify taste input prompt", () => {
     expect(prompt.toLowerCase()).toContain("ingredient");
     expect(prompt.toLowerCase()).toContain("brand");
     expect(prompt.toLowerCase()).toContain("reject");
+    expect(prompt.toLowerCase()).toContain("spaghetti");
+    expect(prompt.toLowerCase()).toContain("dish");
   });
 });

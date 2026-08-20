@@ -198,7 +198,7 @@ export async function profileDish(
   );
   const cachedIngredient =
     store.get(ingredientName) ?? store.get(normalizeIngredientName(dish));
-  if (cachedIngredient) {
+  if (classification.kind === "ingredient" && cachedIngredient) {
     return profileCachedIngredient(dish, cachedIngredient, true, emit, deps);
   }
 

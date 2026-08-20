@@ -16,7 +16,7 @@ Final numeric taste scores are computed in this folder. Do not generate a dish v
 - Shared dish profiles live in Turso `dishes` (running mean, `timesTasted`, last snapshot). LLM matches the query to a row; it does not invent scores. Nested recipe tastes persist as ingredients, not dishes.
 - Site-wide taste count lives in Turso `stats` (`taste_count`). Increment only on a successful top-level profile, not on reject/error/Stop.
 - Translate extracted ingredient names to English before listing or resolving. Gemini canonicalizes every name against the ingredient catalog (`canonicalizeIngredientNames(names, catalog, culinaryContext)`).
-- Classify the query first (dish / ingredient / reject). Ingredient Turso always wins, even if classify says dish. Reuse cache only gates top-level dishes. Brands and gibberish are rejected.
+- Classify the query first (dish / ingredient / reject). If the name is both grocery and dish (spaghetti), classify as dish and skip the ingredient catalog shortcut. Ingredient Turso wins when classify says ingredient. Reuse cache only gates top-level dishes. Brands and gibberish are rejected.
 - Resolve every unique listed ingredient (not only the ≥50% representative set).
 - Default model: `gemini-3.5-flash-lite`. Hard cases: `gemini-3.6-flash`. IDs in `lib/engine/models.ts`.
 - Add measured profiles in Turso (`INSERT OR IGNORE` on normalized name). Existing catalog rows are never overwritten. Unit tests may use `lib/engine/testdata/ingredients.json`; that file is not the live catalog.

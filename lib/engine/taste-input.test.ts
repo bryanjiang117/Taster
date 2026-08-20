@@ -141,35 +141,44 @@ describe("taste input classification", () => {
     expect(events.some((m) => /saving|catalog/i.test(m))).toBe(true);
   });
 
-  it("uses an ingredient catalog hit even when classify says dish", async () => {
+  it("runs the dish pipeline when classify says dish even if the name is also an ingredient", async () => {
+    const identifyDish = vi.fn(async () => {
+      throw new Error("identifyDish should run for spaghetti");
+    });
     const search = vi.fn(async () => {
-      throw new Error("search should not run");
+      throw new Error("search should run for spaghetti");
     });
-    const result = await profileDish("lime", {
-      llm: {
-        classifyTasteInput: async () => ({ kind: "dish" }),
-        identifyDish: async () => {
-          throw new Error("identifyDish should not run");
+    const pastaTaste: TasteProfile = {
+      sweet: 1,
+      sour: 0,
+      salty: 0,
+      spicy: 0,
+      umami: 0,
+      bitter: 0,
+    };
+
+    await expect(
+      profileDish("spaghetti", {
+        llm: {
+          classifyTasteInput: async () => ({ kind: "dish" }),
+          identifyDish,
+          extractRecipe: async () => null,
         },
-        extractRecipe: async () => null,
-      },
-      search: { search },
-      pages: silentPages(),
-      store: new IngredientStore([
-        {
-          ingredient: "lime",
-          taste: limeTaste,
-          derivedFrom: [],
-          processing: [],
-          confidence: 0.9,
-          source: "measured",
-        },
-      ]),
-      useCache: false,
-    });
-    expect(search).not.toHaveBeenCalled();
-    expect(result.fromCache).toBe(true);
-    expect(result.taste.sour).toBe(9);
-    expect(result.recipesAnalyzed).toBe(0);
+        search: { search },
+        pages: silentPages(),
+        store: new IngredientStore([
+          {
+            ingredient: "spaghetti",
+            taste: pastaTaste,
+            derivedFrom: [],
+            processing: [],
+            confidence: 0.9,
+            source: "measured",
+          },
+        ]),
+        useCache: false,
+      }),
+    ).rejects.toThrow(/identifyDish should run for spaghetti/);
+    expect(identifyDish).toHaveBeenCalled();
   });
 });

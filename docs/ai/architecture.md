@@ -6,7 +6,7 @@ Taster is a Next.js App Router app. All culinary logic lives in `lib/engine` so 
 input
   → Flash-Lite classify: dish | ingredient | reject (brands / gibberish)
   → reject: user-facing error (no search)
-  → ingredient Turso hit (always, even if classified as dish; Reuse cache ignored):
+  → ingredient Turso hit (only if classified as ingredient; Reuse cache ignored):
         return intrinsic 0–10 vector
   → else try chemistry leaf (FAO/INFOODS + UmamiDB + Phenol-Explorer + Dr. Duke + FooDB + USDA → one Gemini identity check → compound mixer → Gemini calibrate)
         persist INSERT OR IGNORE; return if evidence exists

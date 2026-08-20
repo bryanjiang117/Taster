@@ -71,6 +71,7 @@ export function classifyTasteInputPrompt(query: string): string {
 Accept only:
 - "dish": a prepared food or drink people cook or order (pad thai, ceviche, latte, chocolate cake).
 - "ingredient": a singular grocery food or cooking ingredient (lime, salt, chicken breast, fish sauce).
+If the same word is both a grocery and a dish people cook or order (spaghetti, ramen, pizza, salad), classify as "dish".
 Reject brands, product SKUs, random/gibberish text, sentences, URLs, and non-food.
 For ingredient, return a short singular English grocery name in "name".
 For reject, give a short "reason".
