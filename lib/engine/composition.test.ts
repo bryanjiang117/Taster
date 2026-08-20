@@ -22,11 +22,11 @@ describe("composition → taste mapping", () => {
 
   it("maps everyday sodium and glutamate like eating the food, not a fraction of salt or kombu", () => {
     const parmesan = tasteFromComposition({ sodiumMgPer100g: 1500 });
-    expect(parmesan.salty).toBeGreaterThanOrEqual(6);
+    expect(parmesan.salty).toBeGreaterThanOrEqual(7);
     expect(parmesan.salty).toBeLessThan(9);
     const tomato = tasteFromComposition({ glutamateMgPer100g: 200 });
-    expect(tomato.umami).toBeGreaterThanOrEqual(4);
-    expect(tomato.umami).toBeLessThan(7);
+    expect(tomato.umami).toBeGreaterThanOrEqual(3);
+    expect(tomato.umami).toBeLessThan(6);
   });
 
   it("lets a perceived index override chemistry on every dimension", () => {

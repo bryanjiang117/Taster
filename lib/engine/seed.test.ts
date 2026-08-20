@@ -20,4 +20,9 @@ describe("test ingredient snapshot", () => {
     expect(pepper).toBeGreaterThanOrEqual(0.1);
     expect(pepper).toBeLessThanOrEqual(0.3);
   });
+
+  it("does not score ginger or garlic as chili-spicy", () => {
+    expect(loadSeedStore().get("ginger")?.taste.spicy).toBe(0);
+    expect(loadSeedStore().get("garlic")?.taste.spicy).toBe(0);
+  });
 });

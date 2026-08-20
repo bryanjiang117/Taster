@@ -15,6 +15,17 @@ describe("compound mixer", () => {
     expect(evidence.sweet).toBe(false);
   });
 
+  it("scores soy-sauce sodium as nearly as salty as salt", () => {
+    const { taste } = draftTasteFromCompounds(amounts([["sodium", 5500]]));
+    expect(taste.salty).toBeGreaterThanOrEqual(9);
+  });
+
+  it("scores ham-level sodium as clearly salty, not a trace", () => {
+    const { taste } = draftTasteFromCompounds(amounts([["sodium", 800]]));
+    expect(taste.salty).toBeGreaterThanOrEqual(5);
+    expect(taste.salty).toBeLessThan(8);
+  });
+
   it("keeps carrot-level sodium as a tiny salty score, not zero and not high", () => {
     const { taste } = draftTasteFromCompounds(amounts([["sodium", 69]]));
     expect(taste.salty).toBeGreaterThan(0);
@@ -104,6 +115,18 @@ describe("compound mixer", () => {
     expect(pepper.spicy).toBeGreaterThan(0.1);
     expect(pepper.spicy).toBeLessThan(0.3);
     expect(chili.spicy).toBeGreaterThan(pepper.spicy);
+  });
+
+  it("does not treat ginger, garlic, mustard, or sanshool as chili heat", () => {
+    const ginger = draftTasteFromCompounds(amounts([["gingerol", 363.4]]));
+    const garlic = draftTasteFromCompounds(amounts([["allicin", 1465]]));
+    const mustard = draftTasteFromCompounds(amounts([["allyl_isothiocyanate", 80]]));
+    const sichuan = draftTasteFromCompounds(amounts([["hydroxy_alpha_sanshool", 80]]));
+    expect(ginger.taste.spicy).toBe(0);
+    expect(garlic.taste.spicy).toBe(0);
+    expect(mustard.taste.spicy).toBe(0);
+    expect(sichuan.taste.spicy).toBe(0);
+    expect(ginger.evidence.spicy).toBe(false);
   });
 
   it("keeps caffeine bitter quieter than quinine at the same milligrams", () => {

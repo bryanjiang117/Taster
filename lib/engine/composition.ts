@@ -21,8 +21,8 @@ export type CompositionData = {
  */
 export const COMPOSITION_TASTE_TAU = {
   sweet: 7.5, // g sugar / 100g
-  salty: 1400, // mg sodium / 100g
-  umami: 300, // mg glutamate / 100g
+  salty: 900, // mg sodium / 100g
+  umami: 450, // mg glutamate / 100g
 } as const;
 
 const INDEX_KEY = {

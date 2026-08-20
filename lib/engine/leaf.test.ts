@@ -272,12 +272,25 @@ describe("tryChemistryLeaf", () => {
     expect(result?.taste.umami).toBeGreaterThan(8);
   });
 
-  it("lets Gemini calibrate only dimensions that have evidence, except omitted acids/umami/spicy", () => {
+  it("lets Gemini calibrate only dimensions that have evidence, except omitted acids/umami", () => {
     const draft = draftTasteFromCompounds([{ id: "sodium", amount: 1500 }]);
-    const calibrated = applyCalibration(draft, { salty: 7, bitter: 8, spicy: 3 });
+    const calibrated = applyCalibration(draft, { salty: 7, bitter: 8, spicy: 3, sour: 4 });
     expect(calibrated.salty).toBe(7);
     expect(calibrated.bitter).toBe(0);
-    expect(calibrated.spicy).toBe(3);
+    expect(calibrated.spicy).toBe(0);
+    expect(calibrated.sour).toBe(4);
+  });
+
+  it("scores ginger from Duke as pungent identity, not chili heat", async () => {
+    const result = await tryChemistryLeaf("ginger", {
+      store: new IngredientStore(),
+      usda: { candidates: async () => [], compounds: async () => [] },
+      foodb: { candidates: async () => [], compounds: async () => [] },
+      fct: { candidates: async () => [], compounds: async () => [] },
+      duke: new DukeDumpClient(),
+    });
+    expect(result).not.toBeNull();
+    expect(result?.taste.spicy).toBe(0);
   });
 
   it("scores MSG as a glutamate salt instead of searching a recipe", async () => {

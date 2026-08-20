@@ -49,7 +49,7 @@
     "taste": {
       "sweet": 1,
       "sour": 0.5,
-      "salty": 9,
+      "salty": 9.5,
       "spicy": 0,
       "umami": 8,
       "bitter": 0
@@ -71,9 +71,9 @@
     "taste": {
       "sweet": 1,
       "sour": 1,
-      "salty": 9,
+      "salty": 9.5,
       "spicy": 0,
-      "umami": 9,
+      "umami": 8,
       "bitter": 0.5
     },
     "derivedFrom": [
@@ -174,7 +174,7 @@
       "sweet": 1,
       "sour": 0.5,
       "salty": 0,
-      "spicy": 2,
+      "spicy": 0,
       "umami": 4,
       "bitter": 1
     },
@@ -204,7 +204,7 @@
       "sweet": 1,
       "sour": 1,
       "salty": 0,
-      "spicy": 4,
+      "spicy": 0,
       "umami": 1,
       "bitter": 1
     },
@@ -272,9 +272,9 @@
     "taste": {
       "sweet": 2,
       "sour": 1,
-      "salty": 8,
+      "salty": 8.5,
       "spicy": 0,
-      "umami": 9,
+      "umami": 8,
       "bitter": 0.5
     },
     "derivedFrom": [
@@ -308,9 +308,9 @@
     "taste": {
       "sweet": 0.5,
       "sour": 1,
-      "salty": 7,
+      "salty": 8,
       "spicy": 0,
-      "umami": 9,
+      "umami": 7.5,
       "bitter": 0.5
     },
     "derivedFrom": [

@@ -10,6 +10,8 @@ export type CompoundAmount = {
 export type ChemistryDraft = {
   taste: TasteProfile;
   evidence: Record<TasteDimension, boolean>;
+  /** True when any recognized compound was present, including non-chili pungents. */
+  measured: boolean;
 };
 
 function saturatingScore(amount: number, tau: number): number {
@@ -40,6 +42,14 @@ const NON_TASTE_IDS = new Set([
   "aspartate",
 ]);
 
+/** Pungent, not chili heat. Mapped for identity; never spicy. */
+const NON_CHILI_PUNGENT_IDS = new Set([
+  "gingerol",
+  "allicin",
+  "allyl_isothiocyanate",
+  "hydroxy_alpha_sanshool",
+]);
+
 export function draftTasteFromCompounds(amounts: CompoundAmount[]): ChemistryDraft {
   const taste = emptyTaste();
   const evidence = emptyEvidence();
@@ -50,7 +60,7 @@ export function draftTasteFromCompounds(amounts: CompoundAmount[]): ChemistryDra
     const def = findCompound(row.id);
     if (!def || NON_TASTE_IDS.has(def.id)) continue;
     resolved.push({ def, amount: row.amount });
-    evidence[def.dimension] = true;
+    if (!NON_CHILI_PUNGENT_IDS.has(def.id)) evidence[def.dimension] = true;
   }
 
   const sucroseEq = sumClass(resolved, "sugar");
@@ -60,7 +70,7 @@ export function draftTasteFromCompounds(amounts: CompoundAmount[]): ChemistryDra
   if (acidEq > 0) taste.sour = saturatingScore(acidEq, 2500);
 
   const sodiumEq = sumClass(resolved, "sodium");
-  if (sodiumEq > 0) taste.salty = saturatingScore(sodiumEq, 1400);
+  if (sodiumEq > 0) taste.salty = saturatingScore(sodiumEq, 900);
 
   const glutamateEq =
     sumClass(resolved, "glutamate") + sumClass(resolved, "glutamate_bound");
@@ -69,17 +79,10 @@ export function draftTasteFromCompounds(amounts: CompoundAmount[]): ChemistryDra
     evidence.umami = true;
     const synergistic =
       glutamateEq * (1 + nucleotideEq / 50) + nucleotideEq * 0.4;
-    taste.umami = saturatingScore(synergistic, 300);
+    taste.umami = saturatingScore(synergistic, 450);
   }
 
-  taste.spicy = mixIndependent(resolved, [
-    "capsaicinoid",
-    "piperine",
-    "gingerol",
-    "isothiocyanate",
-    "allicin",
-    "sanshool",
-  ]);
+  taste.spicy = mixIndependent(resolved, ["capsaicinoid", "piperine"]);
   taste.bitter = mixIndependent(resolved, [
     "alkaloid_bitter",
     "quinine",
@@ -99,7 +102,7 @@ export function draftTasteFromCompounds(amounts: CompoundAmount[]): ChemistryDra
     if (taste[dim] <= 0) evidence[dim] = evidence[dim] && taste[dim] > 0;
   }
 
-  return { taste: clampTaste(taste), evidence };
+  return { taste: clampTaste(taste), evidence, measured: resolved.length > 0 };
 }
 
 function sumClass(
@@ -162,10 +165,10 @@ export function mergeCompoundLayers(
 }
 
 export function hasChemistryEvidence(draft: ChemistryDraft): boolean {
-  return TASTE_DIMENSIONS.some((dim) => draft.evidence[dim]);
+  return draft.measured || TASTE_DIMENSIONS.some((dim) => draft.evidence[dim]);
 }
 
-const LAB_GAP_DIMENSIONS = new Set<TasteDimension>(["sour", "umami", "spicy"]);
+const LAB_GAP_DIMENSIONS = new Set<TasteDimension>(["sour", "umami"]);
 
 export function applyCalibration(
   draft: ChemistryDraft,

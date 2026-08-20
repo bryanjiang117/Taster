@@ -87,6 +87,12 @@ describe("leaf calibration prompt", () => {
     expect(prompt.toLowerCase()).toContain("black pepper");
     expect(prompt).toMatch(/0\.2/);
     expect(prompt.toLowerCase()).toContain("chili");
+    expect(prompt.toLowerCase()).toContain("ginger");
+    expect(prompt.toLowerCase()).toContain("chili heat");
+    expect(prompt.toLowerCase()).not.toContain("gingerol");
+    expect(prompt.toLowerCase()).toContain("salty");
+    expect(prompt).toMatch(/8\.5/);
+    expect(prompt.toLowerCase()).toContain("make room");
   });
 });
 
