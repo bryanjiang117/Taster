@@ -51,4 +51,17 @@ describe("volume and process effects", () => {
     ]);
     expect(volume).toBe(1);
   });
+
+  it("does not count drained frying oil toward starting volume", () => {
+    expect(
+      estimateFinalVolume(
+        [
+          { name: "chicken", volumeMl: 500 },
+          { name: "oil", volumeMl: 300, mix: { intensity: 0 } },
+          { name: "salt", volumeMl: 5 },
+        ],
+        [],
+      ),
+    ).toBe(505);
+  });
 });

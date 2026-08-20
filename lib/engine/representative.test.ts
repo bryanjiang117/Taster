@@ -127,4 +127,29 @@ describe("representative recipe", () => {
     // median of in-only shares: 40/400 and 80/400 → 0.15 → 60ml at target 400
     expect(lemon?.volumeMl).toBeCloseTo(60);
   });
+
+  it("keeps median prep intensity so discarded frying oil does not fill the bowl", () => {
+    const recipes = [
+      {
+        ingredients: [
+          { name: "chicken", volumeMl: 500, role: "in" as const },
+          { name: "oil", volumeMl: 300, role: "in" as const, mix: { intensity: 0 } },
+          { name: "salt", volumeMl: 5, role: "in" as const },
+        ],
+      },
+      {
+        ingredients: [
+          { name: "chicken", volumeMl: 500, role: "in" as const },
+          { name: "oil", volumeMl: 200, role: "in" as const, mix: { intensity: 0 } },
+          { name: "salt", volumeMl: 5, role: "in" as const },
+        ],
+      },
+    ];
+    const representative = buildRepresentativeRecipe(recipes, 505);
+    const oil = representative.ingredients.find((i) => i.name === "oil");
+    const salt = representative.ingredients.find((i) => i.name === "salt");
+    expect(oil?.mix?.intensity).toBe(0);
+    expect(salt?.volumeMl).toBeGreaterThan(4);
+    expect(oil?.volumeMl ?? 0).toBeLessThan(1);
+  });
 });

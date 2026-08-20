@@ -20,6 +20,7 @@ import {
 } from "./found-ingredients";
 import { normalizeIngredientName } from "./normalize";
 import { applySolubleRetention } from "./processing";
+import { applyPrepMixHeuristics } from "./prep-mix";
 import { runLoggedStep, type ProgressSink } from "./progress";
 import { rethrowIfAborted, throwIfAborted } from "./abort";
 import { buildRepresentativeRecipe } from "./representative";
@@ -69,7 +70,7 @@ import {
   type ResolvedIngredient,
   type TasteProfile,
 } from "./types";
-import { applyProcessEffects, estimateFinalVolume } from "./volume";
+import { applyProcessEffects, estimateFinalVolume, tastingVolumeMl } from "./volume";
 
 export type DishProfileResult = {
   dish: string;
@@ -267,11 +268,13 @@ async function tasteFromRecipes(
     throw new Error(emptyRecipeMessage(query, collected));
   }
 
-  const recipes = await matchRecipeIngredients(
-    collected.recipes,
-    run.store,
-    deps,
-    culinaryContextFromOrigin(origin),
+  const recipes = applyPrepMixHeuristics(
+    await matchRecipeIngredients(
+      collected.recipes,
+      run.store,
+      deps,
+      culinaryContextFromOrigin(origin),
+    ),
   );
 
   await resolveMissingIngredients(recipes, run, deps, true);
@@ -285,7 +288,7 @@ async function tasteFromRecipes(
         recipes.map((recipe) =>
           recipe.ingredients
             .filter((item) => item.role !== "out")
-            .reduce((sum, item) => sum + item.volumeMl, 0),
+            .reduce((sum, item) => sum + tastingVolumeMl(item), 0),
         ),
       );
       const processes = commonProcesses(recipes);
@@ -475,11 +478,13 @@ async function collectRecipes(
 
   const refreshTarget = async () => {
     if (recipes.length < minRecipes) return;
-    const aligned = await matchRecipeIngredients(
-      recipes,
-      run.store,
-      deps,
-      culinaryContextFromOrigin(origin),
+    const aligned = applyPrepMixHeuristics(
+      await matchRecipeIngredients(
+        recipes,
+        run.store,
+        deps,
+        culinaryContextFromOrigin(origin),
+      ),
     );
     if (aligned !== recipes) {
       recipes.splice(0, recipes.length, ...aligned);
@@ -869,7 +874,8 @@ async function resolveFood(
             deps.llm.confirmFoodShortlists!(query, shortlists, run.context)
         : undefined,
       calibrateLeaf: deps.llm.calibrateLeafTaste
-        ? (n, draft) => deps.llm.calibrateLeafTaste!(n, draft)
+        ? (n, draft, evidence) =>
+            deps.llm.calibrateLeafTaste!(n, draft, evidence, run.context)
         : undefined,
     });
     if (leaf) {
@@ -877,7 +883,7 @@ async function resolveFood(
       await run.learnedFlush.onLearned(leaf);
       return leaf;
     }
-    const estimated = await estimateGroceryLeaf(canonical, deps);
+    const estimated = await estimateGroceryLeaf(canonical, deps, run.context);
     if (estimated) {
       run.store.put(estimated);
       await run.learnedFlush.onLearned(estimated);
@@ -922,10 +928,11 @@ async function resolveFood(
 async function estimateGroceryLeaf(
   name: string,
   deps: PipelineDeps,
+  context?: CulinaryContext,
 ): Promise<ResolvedIngredient | null> {
   if (!deps.llm.estimateLeafTaste) return null;
   try {
-    const overlay = await deps.llm.estimateLeafTaste(name);
+    const overlay = await deps.llm.estimateLeafTaste(name, context);
     if (!overlay) return null;
     return {
       ingredient: name,

@@ -1,5 +1,6 @@
 import { capTaste, ceilingTaste, clampTaste, emptyTaste, scaleTaste } from "./taste";
 import { TASTE_DIMENSIONS, type IngredientMix, type TasteProfile } from "./types";
+import { tastingShareVolume } from "./volume";
 
 export type MixIngredient = {
   volumeMl: number;
@@ -66,9 +67,21 @@ export const MIX_P_NORM = 4;
 /** Linear boost after mix (~5 raw → ~8). */
 export const MIX_GAIN = 1.75;
 
-/** Loud notes (≥ this score) covering ≥ this dish share use p-norm punch-through. */
+/** Loud notes (≥ this score) whose dish share steers linear vs p-norm punch-through. */
 export const SEASONING_LOUD = 7;
+/** Share midpoint for the punch-through blend (was a hard cutoff at this value). */
 export const SEASONING_SHARE = 0.025;
+/** Smoothstep ends: full punch by ~SEASONING_SHARE × 1.12, linear below ~×0.32. */
+const PUNCH_SHARE_LOW = SEASONING_SHARE * 0.32;
+const PUNCH_SHARE_HIGH = SEASONING_SHARE * 1.12;
+
+/** Smooth 0→1 weight: traces stay linear, spoon-scale seasonings punch through. */
+export function seasoningPunchWeight(seasoningShare: number): number {
+  if (seasoningShare <= PUNCH_SHARE_LOW) return 0;
+  if (seasoningShare >= PUNCH_SHARE_HIGH) return 1;
+  const t = (seasoningShare - PUNCH_SHARE_LOW) / (PUNCH_SHARE_HIGH - PUNCH_SHARE_LOW);
+  return t * t * (3 - 2 * t);
+}
 
 export function applyMixGain(score: number): number {
   if (score <= 0) return 0;
@@ -107,8 +120,10 @@ function pNormDimension(
   // Spicy always punches through volume; other dims stay linear for tiny loud notes.
   if (dim === "spicy") return applyMixGain(punchAcc ** (1 / p));
   const linear = applyMixGain(linearAcc);
-  if (seasoningShare < SEASONING_SHARE || punchAcc <= 0) return linear;
-  return applyMixGain(punchAcc ** (1 / p));
+  if (punchAcc <= 0) return linear;
+  const punch = applyMixGain(punchAcc ** (1 / p));
+  const weight = seasoningPunchWeight(seasoningShare);
+  return linear * (1 - weight) + punch * weight;
 }
 
 /** Relative loudness × p-norm × linear gain. */
@@ -125,9 +140,10 @@ export function combineRecipeTaste(
   }));
 
   const stats = recipeTasteStats(weighted);
+  const tastingMl = tastingShareVolume(inside, finalVolumeMl);
   const mixed = emptyTaste();
   for (const dim of TASTE_DIMENSIONS) {
-    mixed[dim] = pNormDimension(weighted, finalVolumeMl, dim, MIX_P_NORM, stats);
+    mixed[dim] = pNormDimension(weighted, tastingMl, dim, MIX_P_NORM, stats);
   }
   const ceiling = ceilingTaste(weighted.map((item) => item.taste));
   return clampTaste(capTaste(mixed, ceiling));

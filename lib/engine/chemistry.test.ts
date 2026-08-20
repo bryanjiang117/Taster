@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { draftTasteFromCompounds, mergeCompoundLayers, type CompoundAmount } from "./chemistry";
+import {
+  applyCalibration,
+  draftTasteFromCompounds,
+  mergeCompoundLayers,
+  type CompoundAmount,
+} from "./chemistry";
 
 function amounts(rows: Array<[string, number]>): CompoundAmount[] {
   return rows.map(([id, amount]) => ({ id, amount }));
@@ -169,6 +174,16 @@ describe("compound mixer", () => {
     expect(evidence.salty).toBe(true);
     expect(evidence.spicy).toBe(false);
     expect(evidence.bitter).toBe(false);
+  });
+
+  it("lets calibration add chili heat when labs scored a chili as sweet pepper", () => {
+    const draft = draftTasteFromCompounds(amounts([["sucrose", 5]]));
+    const chili = applyCalibration(draft, { sweet: 1, spicy: 8 }, "chili pepper");
+    expect(chili.spicy).toBe(8);
+    expect(chili.sweet).toBe(1);
+
+    const ginger = applyCalibration(draft, { spicy: 8 }, "ginger");
+    expect(ginger.spicy).toBe(0);
   });
 });
 

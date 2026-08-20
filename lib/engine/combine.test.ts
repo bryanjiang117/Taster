@@ -6,6 +6,7 @@ import {
   MIX_P_NORM,
   relativeLoudness,
   recipeTasteStats,
+  seasoningPunchWeight,
   SEASONING_LOUD,
   SEASONING_SHARE,
 } from "./combine";
@@ -26,15 +27,46 @@ const SHARE = SPOON / BOWL;
 function mixed(score: number, share: number, stats: ReturnType<typeof recipeTasteStats>): number {
   const loud = relativeLoudness(score, stats);
   const linear = applyMixGain(share * loud);
-  if (loud >= SEASONING_LOUD && share >= SEASONING_SHARE) {
-    return applyMixGain(loud * share ** (1 / MIX_P_NORM));
-  }
-  return linear;
+  const punch = applyMixGain(loud * share ** (1 / MIX_P_NORM));
+  const weight =
+    loud >= SEASONING_LOUD ? seasoningPunchWeight(share) : seasoningPunchWeight(0);
+  return linear * (1 - weight) + punch * weight;
 }
 
 function mixedSpicy(score: number, share: number): number {
   return applyMixGain(score * share ** (1 / MIX_P_NORM));
 }
+
+describe("seasoningPunchWeight", () => {
+  it("ramps from linear at trace shares to punch-through at spoon scale", () => {
+    expect(seasoningPunchWeight(0)).toBe(0);
+    expect(seasoningPunchWeight(0.005)).toBe(0);
+    expect(seasoningPunchWeight(0.01)).toBeLessThan(0.15);
+    expect(seasoningPunchWeight(SEASONING_SHARE)).toBeGreaterThan(0.85);
+    expect(seasoningPunchWeight(0.03)).toBe(1);
+    expect(seasoningPunchWeight(0.05)).toBe(1);
+  });
+
+  it("smoothly blends linear and punch just below the old hard cutoff", () => {
+    const stats = recipeTasteStats([
+      { volumeMl: 10, taste: salt },
+      { volumeMl: 490, taste: rice },
+    ]);
+    const share = 10 / 500;
+    const linear = applyMixGain(share * 10);
+    const punch = applyMixGain(10 * share ** (1 / MIX_P_NORM));
+    const taste = combineRecipeTaste(
+      [
+        { volumeMl: 10, taste: salt, role: "in" },
+        { volumeMl: 490, taste: rice, role: "in" },
+      ],
+      500,
+    );
+    expect(taste.salty).toBeGreaterThan(linear);
+    expect(taste.salty).toBeLessThan(punch);
+    expect(taste.salty).toBeCloseTo(mixed(10, share, stats), 5);
+  });
+});
 
 describe("relativeLoudness", () => {
   it("keeps peer scores linear when nothing dominates the recipe", () => {
@@ -87,6 +119,32 @@ describe("combineRecipeTaste", () => {
     );
     expect(dominated.sweet).toBeLessThan(peers.sweet);
     expect(dominated.salty).toBeGreaterThan(peers.salty);
+  });
+
+  it("lets a spoon of salt season a bowl that was fried in discarded oil", () => {
+    const oil = { sweet: 0, sour: 0, salty: 0, spicy: 0, umami: 0, bitter: 0 };
+    const chicken = { sweet: 0.5, sour: 0, salty: 0.5, spicy: 0, umami: 2, bitter: 0 };
+    const soy = { sweet: 1, sour: 1, salty: 9, spicy: 0, umami: 8, bitter: 0.5 };
+    const withOilBath = combineRecipeTaste(
+      [
+        { volumeMl: 500, taste: chicken, role: "in" },
+        { volumeMl: 300, taste: oil, role: "in", mix: { intensity: 0 } },
+        { volumeMl: 15, taste: soy, role: "in" },
+        { volumeMl: 5, taste: salt, role: "in" },
+      ],
+      820,
+    );
+    const eatenOil = combineRecipeTaste(
+      [
+        { volumeMl: 500, taste: chicken, role: "in" },
+        { volumeMl: 300, taste: oil, role: "in", mix: { intensity: 1 } },
+        { volumeMl: 15, taste: soy, role: "in" },
+        { volumeMl: 5, taste: salt, role: "in" },
+      ],
+      820,
+    );
+    expect(withOilBath.salty).toBeGreaterThan(3);
+    expect(withOilBath.salty).toBeGreaterThan(eatenOil.salty);
   });
 
   it("lets a spoon of salt (10) season a bowl", () => {

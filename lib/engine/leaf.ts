@@ -21,7 +21,7 @@ import { normalizeIngredientName } from "./normalize";
 import type { PhenolClient } from "./phenol";
 import { IngredientStore } from "./store";
 import { clampTaste } from "./taste";
-import type { ResolvedIngredient, TasteProfile } from "./types";
+import type { ResolvedIngredient, TasteDimension, TasteProfile } from "./types";
 import type { UmamiClient } from "./umamidb";
 import type { FoodHit, UsdaClient } from "./usda";
 
@@ -41,7 +41,7 @@ export type LeafDeps = {
   calibrateLeaf?: (
     name: string,
     draft: TasteProfile,
-    evidence: TasteProfile,
+    evidence: Record<TasteDimension, boolean>,
   ) => Promise<Partial<TasteProfile> | undefined>;
 };
 
@@ -224,9 +224,9 @@ async function finishLeaf(
     const overlay = await deps.calibrateLeaf(
       canonical,
       draft.taste,
-      evidenceAsTaste(draft),
+      draft.evidence,
     );
-    taste = applyCalibration(draft, overlay);
+    taste = applyCalibration(draft, overlay, canonical);
   }
   return {
     ingredient: canonical,
@@ -238,8 +238,4 @@ async function finishLeaf(
     measuredFrom: measuredFrom.length ? measuredFrom : undefined,
     reasoning: "Mapped from measured food compounds",
   };
-}
-
-function evidenceAsTaste(draft: ReturnType<typeof draftTasteFromCompounds>): TasteProfile {
-  return draft.taste;
 }

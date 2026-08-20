@@ -26,7 +26,7 @@ input
         successful profile: stats.taste_count += 1 (global, all users)
 ```
 
-Dish mix: recipe-relative loudness for non-spicy (peer scores pass; weak vs peak → `score × √(score/peak)`), then linear volume×score when loud seasonings cover <2.5%, else p-norm (p=4), linear gain (1.75×). Spicy skips relative loudness and always p-norms. Stats use each ingredient's peak taste for the volume-weighted average.
+Dish mix: recipe-relative loudness for non-spicy (peer scores pass; weak vs peak → `score × √(score/peak)`), then smooth blend of linear volume×score and p-norm punch-through (p=4; weight ramps with loud seasoning share, midpoint ≈2.5%), linear gain (1.75×). Spicy skips relative loudness and always p-norms. Stats use each ingredient's peak taste for the volume-weighted average.
 
 Hard cases (ambiguous origin, fermented/compound ingredients, leaf calibration) retry on `gemini-3.6-flash`. Model IDs live in `lib/engine/models.ts` (`FAST_MODEL` / `SMART_MODEL`).
 

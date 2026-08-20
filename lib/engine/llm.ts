@@ -7,7 +7,8 @@ import {
 import type { SearchMode } from "./dish-cache";
 import { FAST_MODEL, needsSmartIngredient, shouldEscalateOrigin, SMART_MODEL } from "./models";
 import type { SearchHit } from "./search";
-import type { DishOrigin, Recipe, TasteProfile } from "./types";
+import type { DishOrigin, Recipe, TasteDimension, TasteProfile } from "./types";
+import { TASTE_DIMENSIONS } from "./types";
 import type { SourcePicks, SourceShortlist } from "./identity";
 
 export type IdentifyDishOptions = {
@@ -55,13 +56,18 @@ export interface LlmClient {
     shortlists: SourceShortlist[],
     context?: CulinaryContext,
   ): Promise<SourcePicks>;
-  /** Adjust a chemistry draft; code ignores dimensions without evidence. */
+  /** Sanity-check a chemistry draft; code ignores dimensions without evidence, except chili heat on chili-named foods. */
   calibrateLeafTaste?(
     name: string,
     draft: TasteProfile,
+    evidence?: Record<TasteDimension, boolean>,
+    context?: CulinaryContext,
   ): Promise<Partial<TasteProfile> | undefined>;
   /** Mouthful 0–10 when no chemistry source matched this exact grocery name. */
-  estimateLeafTaste?(name: string): Promise<TasteProfile | undefined>;
+  estimateLeafTaste?(
+    name: string,
+    context?: CulinaryContext,
+  ): Promise<TasteProfile | undefined>;
   /** Unused by the pipeline. Allowed on test stubs. */
   lookupIngredient?(name: string): Promise<unknown>;
 }
@@ -94,7 +100,8 @@ export function culinaryContextLine(context?: CulinaryContext): string {
   const cuisine = [context.culture, context.country].filter(Boolean).join(", ");
   const language = context.language ? ` Language: ${context.language}.` : "";
   return `DISH: ${context.dish}${native}.${cuisine ? ` Cuisine: ${cuisine}.` : ""}${language}
-Name ingredients using this dish's culinary context, not dictionary English. Regional false friends must map to the food actually used in this cuisine (Latin American Spanish "limón" in ceviche is lime, not lemon). If the catalog has both a dictionary match and the cuisine's food, prefer the cuisine's food when the source name is ambiguous.`;
+Name ingredients using this dish's culinary context, not dictionary English. Regional false friends must map to the food actually used in this cuisine (Latin American Spanish "limón" in ceviche is lime, not lemon). If the catalog has both a dictionary match and the cuisine's food, prefer the cuisine's food when the source name is ambiguous.
+Typical food: this ingredient is for THAT dish. Pick and score the food the cuisine actually uses, not US supermarket false friends. Chili / chili pepper in a spicy Chinese, Thai, Sichuan, Mexican, or similar dish is the hot chili (dried 干辣椒, Thai bird's eye), never American sweet chili sauce and never bell or sweet pepper. If a shortlist row is sweet pepper or sweet chili sauce and the dish is spicy-chili cookery, reject that row.`;
 }
 
 export function canonicalizeIngredientNamesPrompt(
@@ -133,7 +140,7 @@ For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.
 - "out" = side, garnish, dip, "for serving", lemon wedges on the side, bread, packaging, or anything not meant to flavor the cooked dish itself.
 When unsure, use "in".
-For each "in" ingredient, use culinary common sense about how THIS recipe treats it (bloomed in oil, drained, charred, fermented, reduced, crushed, raw, freshly cracked, etc.). Return mix.intensity (1 = the amount already implies the strength, 0 = none of it tastes in the bowl, >1 if concentrated into the dish) and mix.scale per-dimension multipliers only when prep changes that dimension. Freshly cracked black pepper is still not chili: scale spicy so the 0.2 leaf becomes ≈ 0.5. Do not output the dish's final 0-10 taste vector.
+For each "in" ingredient, use culinary common sense about how THIS recipe treats it (bloomed in oil, drained, charred, fermented, reduced, crushed, raw, freshly cracked, etc.). Return mix.intensity (1 = the amount already implies the strength, 0 = none of it tastes in the bowl, >1 if concentrated into the dish) and mix.scale per-dimension multipliers only when prep changes that dimension. Deep-fry / frying oil that is drained, pasta water, and blanching water are intensity 0 — they must not fill the served volume. A spoon of stir-fry oil or chili oil that is eaten stays 1. Freshly cracked black pepper is still not chili: scale spicy so the 0.2 leaf becomes ≈ 0.5. Do not output the dish's final 0-10 taste vector.
 Estimate cooking process volume effects in ml (negative for evaporation/discard/absorption).
 SOURCE: ${sourceUrl}
 TEXT: ${pageText.slice(0, 9000)}`;
@@ -152,7 +159,7 @@ For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.
 - "out" = side, garnish, dip, "for serving", lemon wedges on the side, bread, packaging, or anything not meant to flavor the cooked dish itself.
 When unsure, use "in".
-For each "in" ingredient, use culinary common sense about how THIS recipe treats it (bloomed in oil, drained, charred, fermented, reduced, crushed, raw, freshly cracked, etc.). Return mix.intensity (1 = the amount already implies the strength, 0 = none of it tastes in the bowl, >1 if concentrated into the dish) and mix.scale per-dimension multipliers only when prep changes that dimension. Freshly cracked black pepper is still not chili: scale spicy so the 0.2 leaf becomes ≈ 0.5. Do not output the dish's final 0-10 taste vector.
+For each "in" ingredient, use culinary common sense about how THIS recipe treats it (bloomed in oil, drained, charred, fermented, reduced, crushed, raw, freshly cracked, etc.). Return mix.intensity (1 = the amount already implies the strength, 0 = none of it tastes in the bowl, >1 if concentrated into the dish) and mix.scale per-dimension multipliers only when prep changes that dimension. Deep-fry / frying oil that is drained, pasta water, and blanching water are intensity 0 — they must not fill the served volume. A spoon of stir-fry oil or chili oil that is eaten stays 1. Freshly cracked black pepper is still not chili: scale spicy so the 0.2 leaf becomes ≈ 0.5. Do not output the dish's final 0-10 taste vector.
 Also list cookingSteps and estimate volume-changing processes (evaporation, absorption, expansion, discard, reduction, etc.) with volumeDeltaMl (negative when volume is lost).
 URL: ${sourceUrl}`;
 }
@@ -186,22 +193,42 @@ JSON {"common": true or false}`;
 }
 
 const LEAF_ANCHORS =
-  "A 10 is the most intense culinary form of that taste: 10 salty = table salt; 10 sweet = sugar; 10 spicy = thai chili or habanero; 10 umami = fish sauce; 10 bitter = unsweetened espresso. Do not hand out 10s because a food is iconic — a spoon of a 10 seasons a whole bowl. Lemon or lime fruit ≈ 9 sour; lemon or lime juice ≈ 9.5 (not 10). Juice, paste, and extract score higher than the whole food (juice ≠ fruit; paste ≠ the vegetable). orange ≈ 7–8 sweet; onion ≈ 0–1 sweet; parmesan ≈ 7–8 salty; soy sauce / fish sauce / oyster sauce / miso ≈ 8.5–10 salty. black pepper ≈ 0.2 spicy (freshly cracked ≈ 0.5). Spicy is chili heat only (capsaicin): ginger, garlic, onion, mustard, horseradish, wasabi, and Sichuan peppercorn are 0 spicy. Black pepper is not chili — 0.2 is the ceiling unless freshly cracked (~0.5). Salty and umami are different: a sauce can be both very salty and very umami. Do not lower salty to 'make room' for umami or because the food tastes savory/balanced.";
+  "A 10 is the most intense culinary form of that taste: 10 salty = table salt; 10 sweet = sugar; 10 spicy = thai chili or habanero; 10 umami = fish sauce; 10 bitter = unsweetened espresso. Do not hand out 10s because a food is iconic — a spoon of a 10 seasons a whole bowl. Lemon or lime fruit ≈ 9 sour; lemon or lime juice ≈ 9.5 (not 10). Juice, paste, and extract score higher than the whole food (juice ≠ fruit; paste ≠ the vegetable). orange ≈ 7–8 sweet; onion ≈ 0–1 sweet; parmesan ≈ 7–8 salty; soy sauce / fish sauce / oyster sauce / miso ≈ 8.5–10 salty. black pepper ≈ 0.2 spicy (freshly cracked ≈ 0.5). Spicy is chili heat only (capsaicin): ginger, garlic, onion, mustard, horseradish, wasabi, and Sichuan peppercorn are 0 spicy. Black pepper is not chili — 0.2 is the ceiling unless freshly cracked (~0.5). Salty is how salty a mouthful tastes, not milligrams of sodium on a nutrient label. Sodium bicarbonate and other non-salt sodium compounds still show up as 'sodium' in the draft. Functional pantry chemicals (leaveners, thickeners, starches, oils, additives) stay near 0 salty even if the draft is 9–10. Salt, soy, fish sauce, ham, and cheese stay high. Salty and umami are different: a sauce can be both very salty and very umami. Do not lower salty to 'make room' for umami or because the food tastes savory/balanced.";
 
-export function calibrateLeafPrompt(name: string, draft: TasteProfile): string {
-  return `Calibrate this chemistry draft for a mouthful of "${name}".
-The DRAFT numbers already come from measured compounds (sodium → salty, sugars → sweet, and so on). Your job is a mouthful of THIS ingredient alone, not a finished dish and not a milder version of the food.
-You may change a dimension only when the draft already has signal there (lab compounds), except sour and umami: nutrient tables often omit organic acids and free glutamate. You may add those when they define this ingredient and other measured nutrients exist. Do not invent salty/bitter/sweet-as-sugar from nothing, and do not invent chili heat for pungent foods. Potassium and hydrolyzed amino acids are not salt or umami. Bland vegetables stay near 0 (a trace of sweet is ok). Score the named form: citrus juice is more sour than the whole fruit. A paste of a sour fruit stays that fruit, not a tomato sauce. Hot chili peppers (Thai bird's eye, cayenne, habanero) are very spicy; sweet chili sauce is sweet. Raw seafood (squid, crab, shrimp, fish) has moderate umami from nucleotides even when tables only show sodium — calibrate roughly 2–4 umami for plain raw seafood, not 6+. Ginger is pungent, not chili-spicy — spicy stays 0. Garlic, mustard, and Sichuan peppercorn are also 0 spicy. MSG is high umami. Chili oil is chili heat, not canola oil.
-If the draft is already high in salty, that is the sodium in a spoon of this food — keep it high unless the named food is actually low-sodium. Fermented sauces (soy, fish sauce, oyster sauce, miso, doubanjiang) taste strongly salty; umami does not replace that salt.
+export function calibrateLeafPrompt(
+  name: string,
+  draft: TasteProfile,
+  evidence?: Record<TasteDimension, boolean>,
+  context?: CulinaryContext,
+): string {
+  const contextLine = culinaryContextLine(context);
+  return `SANITY-CHECK this chemistry draft for a mouthful of "${name}". The draft is a lab proxy, not a tasting. It is often wrong. Your job is to catch misses a cook would catch immediately.
+${contextLine}
+${labProxyLine(evidence)}
+A high salty draft means a table listed elemental sodium (bicarbonate, aluminum salts, and table salt all look the same). If this food is not something you would call salty, salty is implausible — you MUST change it. The same for every dimension: if the number would surprise a cook, list it in implausible and fix taste. Copying an absurd draft is a failed check.
+You may change a dimension only when the draft already has signal there (lab compounds), except sour, umami, and chili heat on chili-named foods: nutrient tables often omit acids/glutamate, and USDA often hits sweet/bell pepper for "chili pepper". You may add those when they define this ingredient in THIS dish. You should lower a draft dimension when the lab proxy does not match taste. Do not invent salty/bitter/sweet-as-sugar from nothing, and do not invent chili heat for pungent foods that are not chilies. Potassium and hydrolyzed amino acids are not salt or umami. Bland vegetables stay near 0 (a trace of sweet is ok). Score the named form: citrus juice is more sour than the whole fruit. A paste of a sour fruit stays that fruit, not a tomato sauce. Hot chili peppers (Thai bird's eye, cayenne, habanero, Chinese 干辣椒) are very spicy; sweet chili sauce is sweet; bell pepper is not chili. If this named chili is going into a spicy dish and the draft is sweet with no heat, the lab row is the wrong food — fix spicy high and sweet low. Raw seafood (squid, crab, shrimp, fish) has moderate umami from nucleotides even when tables only show sodium — calibrate roughly 2–4 umami for plain raw seafood, not 6+. Ginger is pungent, not chili-spicy — spicy stays 0. Garlic, mustard, and Sichuan peppercorn are also 0 spicy. MSG is high umami. Chili oil is chili heat, not canola oil.
 ${LEAF_ANCHORS}
-Return taste 0-10. Do not output a finished dish profile.
+Return implausible (dimensions that fail a cook's sniff test) and taste 0-10. Do not output a finished dish profile.
 DRAFT: ${JSON.stringify(draft)}`;
 }
 
-export function estimateLeafPrompt(name: string): string {
+function labProxyLine(evidence?: Record<TasteDimension, boolean>): string {
+  if (!evidence) return "";
+  const hits = TASTE_DIMENSIONS.filter((dim) => evidence[dim]);
+  if (!hits.length) return "LAB HITS: none of the 6 tastes had a compound hit.";
+  const note =
+    evidence.salty
+      ? " salty is from milligrams of sodium, not from tasting salt."
+      : "";
+  return `LAB HITS (proxies only): ${hits.join(", ")}.${note}`;
+}
+
+export function estimateLeafPrompt(name: string, context?: CulinaryContext): string {
+  const contextLine = culinaryContextLine(context);
   return `Estimate a mouthful of grocery ingredient ${JSON.stringify(name)}. No lab table matched this exact name.
-Score THIS food, not a parent category or a dish that uses it (thai chili ≠ chili; chili ≠ sweet chili sauce; soft shell crab ≠ crab cakes or fried batter; chicken breast ≠ chicken). Score the named form: juice and paste are stronger than the whole food.
-Bland vegetables stay near 0 (a trace of sweet is ok). Hot chili peppers are very spicy. Ginger, garlic, mustard, horseradish, wasabi, and Sichuan peppercorn are 0 spicy. Soy, fish sauce, oyster sauce, and miso are very salty (8.5–10). Raw seafood has moderate umami (~2–4), not high. MSG is high umami. Chili oil is chili heat, not canola oil.
+${contextLine}
+Score THIS food, not a parent category or a dish that uses it (thai chili ≠ chili; chili ≠ sweet chili sauce; soft shell crab ≠ crab cakes or fried batter; chicken breast ≠ chicken). Score the named form: juice and paste are stronger than the whole food. Use the dish's typical chili if the name is generic chili pepper.
+Bland vegetables stay near 0 (a trace of sweet is ok). Hot chili peppers are very spicy. Ginger, garlic, mustard, horseradish, wasabi, and Sichuan peppercorn are 0 spicy. Soy, fish sauce, oyster sauce, and miso are very salty (8.5–10). Functional pantry chemicals (leaveners, thickeners, starches, oils) are not salty even if they contain sodium. Raw seafood has moderate umami (~2–4), not high. MSG is high umami. Chili oil is chili heat, not canola oil.
 ${LEAF_ANCHORS}
 Return taste 0-10 for this ingredient alone. Do not output a finished dish profile.
 INGREDIENT: ${JSON.stringify(name)}`;
@@ -382,20 +409,37 @@ const COMMON_INGREDIENT_SCHEMA = {
   required: ["common"],
 };
 
+const TASTE_VECTOR_SCHEMA = {
+  type: "object",
+  properties: {
+    sweet: { type: "number" },
+    sour: { type: "number" },
+    salty: { type: "number" },
+    spicy: { type: "number" },
+    umami: { type: "number" },
+    bitter: { type: "number" },
+  },
+};
+
 const CALIBRATE_SCHEMA = {
   type: "object",
   properties: {
-    taste: {
-      type: "object",
-      properties: {
-        sweet: { type: "number" },
-        sour: { type: "number" },
-        salty: { type: "number" },
-        spicy: { type: "number" },
-        umami: { type: "number" },
-        bitter: { type: "number" },
+    implausible: {
+      type: "array",
+      items: {
+        type: "string",
+        enum: ["sweet", "sour", "salty", "spicy", "umami", "bitter"],
       },
     },
+    taste: TASTE_VECTOR_SCHEMA,
+  },
+  required: ["implausible", "taste"],
+};
+
+const ESTIMATE_SCHEMA = {
+  type: "object",
+  properties: {
+    taste: TASTE_VECTOR_SCHEMA,
   },
   required: ["taste"],
 };
@@ -556,22 +600,27 @@ Query: ${query}`,
   async calibrateLeafTaste(
     name: string,
     draft: TasteProfile,
+    evidence?: Record<TasteDimension, boolean>,
+    context?: CulinaryContext,
   ): Promise<Partial<TasteProfile> | undefined> {
     const model = needsSmartIngredient(name) ? SMART_MODEL : FAST_MODEL;
     const data = await this.json<{ taste?: TasteProfile }>(
       model,
-      calibrateLeafPrompt(name, draft),
+      calibrateLeafPrompt(name, draft, evidence, context),
       CALIBRATE_SCHEMA,
     );
     return data.taste;
   }
 
-  async estimateLeafTaste(name: string): Promise<TasteProfile | undefined> {
+  async estimateLeafTaste(
+    name: string,
+    context?: CulinaryContext,
+  ): Promise<TasteProfile | undefined> {
     const model = needsSmartIngredient(name) ? SMART_MODEL : FAST_MODEL;
     const data = await this.json<{ taste?: TasteProfile }>(
       model,
-      estimateLeafPrompt(name),
-      CALIBRATE_SCHEMA,
+      estimateLeafPrompt(name, context),
+      ESTIMATE_SCHEMA,
     );
     return data.taste;
   }

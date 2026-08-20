@@ -34,6 +34,7 @@ function emptyEvidence(): Record<TasteDimension, boolean> {
  * Deterministic mouthful 0–10 from quantified compounds.
  * Tiny amounts stay tiny scores (no detection-threshold clip).
  * Potassium, vitamin C, and hydrolyzed amino-acid totals are not taste.
+ * Nutrient sodium is a salty *proxy* (NaCl and other sodium salts look the same).
  */
 const NON_TASTE_IDS = new Set([
   "potassium",
@@ -170,9 +171,19 @@ export function hasChemistryEvidence(draft: ChemistryDraft): boolean {
 
 const LAB_GAP_DIMENSIONS = new Set<TasteDimension>(["sour", "umami"]);
 
+/** Generic chili names may add heat when USDA matched sweet/bell pepper. Not black/Sichuan pepper. */
+export function chiliHeatFood(name: string): boolean {
+  const n = name.trim().toLowerCase();
+  if (/\b(black|white|pink|sichuan|szechuan|sansho)\s+pepper/.test(n)) return false;
+  return /\b(chil[ei]e?s?|chillies|cayenne|habanero|jalape[nñ]o|gochugaru|gochujang|douban|capsicum|paprika|pepperoncini)\b/.test(
+    n,
+  );
+}
+
 export function applyCalibration(
   draft: ChemistryDraft,
   overlay: Partial<TasteProfile> | undefined,
+  name?: string,
 ): TasteProfile {
   const out = { ...draft.taste };
   if (!overlay) return clampTaste(out);
@@ -180,7 +191,9 @@ export function applyCalibration(
   for (const dim of TASTE_DIMENSIONS) {
     const value = overlay[dim];
     if (value == null) continue;
-    if (!draft.evidence[dim] && !(anyEvidence && LAB_GAP_DIMENSIONS.has(dim))) {
+    const labGap =
+      LAB_GAP_DIMENSIONS.has(dim) || (dim === "spicy" && !!name && chiliHeatFood(name));
+    if (!draft.evidence[dim] && !(anyEvidence && labGap)) {
       continue;
     }
     out[dim] = clampScore(value);

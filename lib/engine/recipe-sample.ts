@@ -33,11 +33,13 @@ export function tasteOfRecipe(recipe: Recipe, store: IngredientStore): TasteProf
     .map((item) => ({
       volumeMl: item.volumeMl,
       taste: store.get(normalizeIngredientName(item.name))?.taste ?? emptyTaste(),
+      mix: item.mix,
     }));
+  const listed = ingredients.reduce((sum, item) => sum + item.volumeMl, 0) || 1;
   const volume =
     recipe.finalVolumeMl && recipe.finalVolumeMl > 0
       ? recipe.finalVolumeMl
-      : ingredients.reduce((sum, item) => sum + item.volumeMl, 0) || 1;
+      : listed;
   return combineRecipeTaste(ingredients, volume);
 }
 
