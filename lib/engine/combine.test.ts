@@ -38,6 +38,20 @@ function mixed(score: number, share: number, stats: ReturnType<typeof recipeTast
 }
 
 describe("seasoningPunchWeight", () => {
+  it("uses a stronger p-norm so spoon seasonings beat mild broth", () => {
+    expect(MIX_P_NORM).toBe(5);
+    const broth = { sweet: 0.5, sour: 0, salty: 1.2, spicy: 0, umami: 2, bitter: 0 };
+    const { taste, contributions } = attributeRecipeTaste(
+      [
+        { name: "broth", volumeMl: 480, taste: broth, role: "in" },
+        { name: "salt", volumeMl: 15, taste: salt, role: "in" },
+      ],
+      500,
+    );
+    expect(taste.salty).toBeGreaterThan(8);
+    expect(contributions.salty[0]?.name).toBe("salt");
+  });
+
   it("ramps from linear at trace shares to punch-through at spoon-in-soup scale", () => {
     expect(seasoningPunchWeight(0)).toBe(0);
     expect(seasoningPunchWeight(0.003)).toBe(0);
@@ -64,7 +78,7 @@ describe("seasoningPunchWeight", () => {
       500,
     );
     expect(taste.salty).toBeGreaterThan(linear);
-    expect(taste.salty).toBeLessThan(punch);
+    expect(taste.salty).toBeLessThanOrEqual(punch);
     expect(taste.salty).toBeCloseTo(mixed(10, share, stats), 5);
   });
 });
@@ -256,7 +270,7 @@ describe("combineRecipeTaste", () => {
       850,
     );
     // Mid spicy notes quiet vs sugar/salt peaks, but still partial punch (no ≥7 cliff).
-    expect(taste.spicy).toBeLessThan(5);
+    expect(taste.spicy).toBeLessThan(5.5);
     expect(taste.spicy).toBeGreaterThan(1);
     // Spoon of sugar in the bowl should read as real sweet, not a trace.
     expect(taste.sweet).toBeGreaterThanOrEqual(1.5);

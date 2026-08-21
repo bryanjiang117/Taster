@@ -13,7 +13,7 @@ Mix is recipe-relative loudness, then a smooth blend of **linear volume×score**
 `pipeline.ts` does:
 
 1. Resolve each in-ingredient (cache → chemistry leaf → Gemini estimate if labs miss that exact name → nested recipe)
-2. `attributeRecipeTaste` / `combineRecipeTaste` → intensity/scale, recipe-relative loudness, linear or p-norm mix (p=4), linear gain (1.75×), plus per-dimension ingredient contribution points
+2. `attributeRecipeTaste` / `combineRecipeTaste` → intensity/scale, recipe-relative loudness, linear or p-norm mix (p=5), linear gain (1.75×), plus per-dimension ingredient contribution points
 3. `applySolubleRetention` if cooking liquid was discarded
 4. Cap is inside combine: no dimension exceeds the strongest in-ingredient
 5. `roundTaste`, and align/round contribution points to that vector (UI lists every positive contributor at 2 decimals with a 0.01 floor so tiny shares still show; tips show 5 then “Show more”)

@@ -21,13 +21,13 @@ input
         rewrite each ingredient to a cuisine-typical singular grocery name (English or well-known romanization; ambiguous generics like Chinese sausage ≠ plain sausage)
         each extract tags role in|out and prep mix knobs; only `in` scores
         each unique name: ingredient cache → chemistry leaf → Gemini estimate if labs miss that exact name → nested full recipe search (same search stack)
-        attributeRecipeTaste / combineRecipeTaste (loudness, linear or p=4, gain 1.75×) → cap at strongest in-ingredient; scoreContributions per dimension
+        attributeRecipeTaste / combineRecipeTaste (loudness, linear or p=5, gain 1.75×) → cap at strongest in-ingredient; scoreContributions per dimension
         nested mixes persist as ingredients, not dishes
         top-level dish: upsert Turso `dishes` (running mean unless Euclidean outlier > 4; timesTasted always += 1)
         successful profile: stats.taste_count += 1 (global, all users)
 ```
 
-Dish mix: recipe-relative loudness (smooth blend from `score × (score/peak)^⅓` to full as ratio→1), then smooth blend of linear volume×score and p-norm punch-through (p=4; seasoning share uses loudness smoothstep ~4→7, punch weight midpoint ≈1.5%), linear gain (1.75×). All six dimensions use the same path. Stats use each ingredient's peak taste for the volume-weighted average. Result `scoreContributions` lists every positive ingredient point share per dimension (recomputed from representative + provenance on cache hits; rounded to 2 decimals with a 0.01 floor).
+Dish mix: recipe-relative loudness (smooth blend from `score × (score/peak)^⅓` to full as ratio→1), then smooth blend of linear volume×score and p-norm punch-through (p=5; seasoning share uses loudness smoothstep ~4→7, punch weight midpoint ≈1.5%), linear gain (1.75×). All six dimensions use the same path. Stats use each ingredient's peak taste for the volume-weighted average. Result `scoreContributions` lists every positive ingredient point share per dimension (recomputed from representative + provenance on cache hits; rounded to 2 decimals with a 0.01 floor).
 
 Hard cases (ambiguous origin, fermented/compound ingredients, leaf calibration) retry on `gemini-3.6-flash`. Model IDs live in `lib/engine/models.ts` (`FAST_MODEL` / `SMART_MODEL`).
 

@@ -92,8 +92,8 @@ export function relativeLoudness(
   return quieted * (1 - peer) + score * peer;
 }
 
-/** Volume punch-through for seasonings in a large bowl (milder than 4.75). */
-export const MIX_P_NORM = 4;
+/** Volume punch-through for seasonings in a large bowl (was 4; 5 favors spoon vs broth). */
+export const MIX_P_NORM = 5;
 
 /** Linear boost after mix (~5 raw → ~8). */
 export const MIX_GAIN = 1.75;

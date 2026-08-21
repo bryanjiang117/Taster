@@ -20,7 +20,7 @@ Hard thresholds in dish mix created score cliffs. Replace them with smoothsteps;
 ### Unchanged
 
 - Punch weight vs share (smoothstep around 1.5% midpoint)
-- `MIX_P_NORM = 4`, `MIX_GAIN = 1.75`
+- `MIX_P_NORM = 5`, `MIX_GAIN = 1.75`
 - Cap at strongest in-ingredient
 
 ## Tests / docs
