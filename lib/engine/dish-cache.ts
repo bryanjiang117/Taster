@@ -1,6 +1,6 @@
 import type { FoundIngredient } from "./found-ingredients";
 import { emptyTaste, TASTE_DIMENSIONS, type TasteProfile } from "./taste";
-import type { DishOrigin, ResolvedIngredient } from "./types";
+import type { DishOrigin, IngredientMix, ResolvedIngredient } from "./types";
 
 export const DISH_OUTLIER_DISTANCE = 4;
 
@@ -16,6 +16,8 @@ export type DishSnapshot = {
       name: string;
       volumeMl: number;
       occurrence: { used: number; total: number };
+      role?: "in" | "out";
+      mix?: IngredientMix;
     }>;
     finalVolumeMl: number;
   };

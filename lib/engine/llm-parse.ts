@@ -1,5 +1,5 @@
 import type { CompositionData } from "./composition";
-import { quantityToMl } from "./quantity";
+import { resolveRecipeVolumes } from "./quantity";
 import type { UnknownLookup } from "./resolve";
 import type { IngredientRole, ProcessEffect, Recipe, TasteProfile } from "./types";
 
@@ -22,6 +22,7 @@ export type RecipeExtractJson = {
     mix?: {
       intensity?: number;
       scale?: Partial<TasteProfile>;
+      why?: string;
     };
   }>;
   processes?: ProcessEffect[];
@@ -37,9 +38,24 @@ function clampMixFactor(value: number | undefined, fallback: number): number {
   return Math.min(3, Math.max(0, value));
 }
 
+/** Keep at most two words for hover labels (marinade, cooking liquid). */
+export function parseMixWhy(why: string | undefined): string | undefined {
+  if (why == null || typeof why !== "string") return undefined;
+  const words = why
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  if (!words.length) return undefined;
+  return words.join(" ");
+}
+
 export function parseIngredientMix(
-  mix: { intensity?: number; scale?: Partial<TasteProfile> } | undefined,
-): { intensity?: number; scale?: Partial<TasteProfile> } | undefined {
+  mix:
+    | { intensity?: number; scale?: Partial<TasteProfile>; why?: string }
+    | undefined,
+): { intensity?: number; scale?: Partial<TasteProfile>; why?: string } | undefined {
   if (!mix || typeof mix !== "object") return undefined;
   const scale = mix.scale
     ? {
@@ -52,10 +68,19 @@ export function parseIngredientMix(
       }
     : undefined;
   const hasScale = Boolean(scale && Object.values(scale).some((value) => value != null));
-  return {
-    intensity: mix.intensity != null ? clampMixFactor(mix.intensity, 1) : undefined,
-    scale: hasScale ? scale : undefined,
-  };
+  const why = parseMixWhy(mix.why);
+  const intensity =
+    mix.intensity != null ? clampMixFactor(mix.intensity, 1) : undefined;
+  if (intensity == null && !hasScale && !why) return undefined;
+  const parsed: {
+    intensity?: number;
+    scale?: Partial<TasteProfile>;
+    why?: string;
+  } = {};
+  if (intensity != null) parsed.intensity = intensity;
+  if (hasScale) parsed.scale = scale;
+  if (why) parsed.why = why;
+  return parsed;
 }
 
 const EMPTY_TASTE: TasteProfile = {
@@ -95,23 +120,26 @@ export function recipeFromExtractJson(
   data: RecipeExtractJson,
   sourceUrl: string,
 ): Recipe | null {
-  const ingredients = (data.ingredients ?? [])
+  const raw = (data.ingredients ?? [])
     .filter((item) => item.name?.trim())
     .map((item) => ({
       name: item.name.trim(),
-      volumeMl: quantityToMl(
-        item.amount || 1,
-        item.unit || "piece",
-        item.name.trim(),
-      ),
+      amount: item.amount,
+      unit: item.unit,
       role: parseIngredientRole(item.role),
       mix: parseIngredientMix(item.mix),
     }));
-  if (!ingredients.length) return null;
+  if (!raw.length) return null;
+  const volumes = resolveRecipeVolumes(raw);
   return {
     title: data.title,
     url: sourceUrl,
-    ingredients,
+    ingredients: raw.map((item, index) => ({
+      name: item.name,
+      volumeMl: volumes[index]!,
+      role: item.role,
+      mix: item.mix,
+    })),
     processes: data.processes ?? [],
   };
 }

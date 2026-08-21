@@ -6,6 +6,7 @@ import {
   confirmFoodShortlistsPrompt,
   culinaryContextLine,
   estimateLeafPrompt,
+  identifyDishPrompt,
   isCommonIngredientPrompt,
   recipeExtractPrompt,
 } from "./llm";
@@ -24,6 +25,19 @@ describe("culinary context in LLM name prompts", () => {
     expect(line).toContain("Spanish");
     expect(line.toLowerCase()).toContain("dictionary");
     expect(line.toLowerCase()).toContain("lime");
+  });
+
+  it("requires cuisine-typical forms for ambiguous generics like sausage", () => {
+    const line = culinaryContextLine({
+      dish: "clay pot rice",
+      nativeName: "煲仔饭",
+      culture: "Cantonese",
+      country: "China",
+      language: "Chinese",
+    });
+    expect(line.toLowerCase()).toMatch(/sausage|腊肠|香肠/);
+    expect(line.toLowerCase()).toMatch(/chinese sausage|lap cheong/);
+    expect(line.toLowerCase()).toMatch(/romaniz|native/);
   });
 
   it("puts that context into canonicalize and extract prompts", () => {
@@ -51,10 +65,63 @@ describe("culinary context in LLM name prompts", () => {
     expect(extract).toMatch(/role to "in" or "out"/);
     expect(extract.toLowerCase()).toContain("common sense");
     expect(extract).toContain("mix.intensity");
+    expect(extract).toContain("mix.why");
+    expect(extract.toLowerCase()).toContain("marinade");
+    expect(extract.toLowerCase()).toContain("evaporat");
+    expect(extract.toLowerCase()).toContain("contribut");
     expect(extract.toLowerCase()).toContain("freshly cracked");
     expect(extract.toLowerCase()).toContain("frying oil");
     expect(extract.toLowerCase()).toContain("pasta water");
-    expect(extract.toLowerCase()).toMatch(/intensity \(1 = the amount already implies the strength, 0 = none of it tastes in the bowl/);
+    expect(extract.toLowerCase()).toMatch(
+      /mix\.intensity is the fraction of the listed amount that contributes/,
+    );
+    expect(extract.toLowerCase()).toContain("pinch");
+    expect(extract.toLowerCase()).toMatch(/never for salt|not tbsp/);
+    expect(extract.toLowerCase()).toMatch(
+      /different dish|not (the )?target|return \{\"ingredients\":\[\]\}|empty ingredients/,
+    );
+    expect(extract.toLowerCase()).toMatch(/honest|real|actual|page('s)? (own )?title/);
+    expect(extract.toLowerCase()).not.toMatch(
+      /prefer ceviche if several dishes appear/,
+    );
+  });
+
+  it("canonicalizes ambiguous generics to the cuisine-typical food even when catalog has only the generic", () => {
+    const prompt = canonicalizeIngredientNamesPrompt(
+      ["香肠", "sausage"],
+      ["sausage", "soy sauce", "rice"],
+      {
+        dish: "clay pot rice",
+        nativeName: "煲仔饭",
+        culture: "Cantonese",
+        country: "China",
+        language: "Chinese",
+      },
+    );
+    expect(prompt.toLowerCase()).toMatch(/cuisine-typical|culinary context|ambiguous/);
+    expect(prompt.toLowerCase()).toMatch(/chinese sausage|lap cheong/);
+    expect(prompt.toLowerCase()).toMatch(/invent|romaniz/);
+    expect(prompt.toLowerCase()).not.toMatch(
+      /do not upgrade a generic name to a different product just because the catalog is more specific/,
+    );
+    expect(prompt.toLowerCase()).toMatch(/italian sausage|bratwurst|already specific/);
+  });
+
+  it("forbids collapsing process forms and dish-namesake foods into parent categories", () => {
+    const prompt = canonicalizeIngredientNamesPrompt(
+      ["김치", "kimchi"],
+      ["cabbage", "rice", "soy sauce"],
+      {
+        dish: "kimchi fried rice",
+        nativeName: "김치볶음밥",
+        culture: "Korean",
+        country: "South Korea",
+        language: "Korean",
+      },
+    );
+    expect(prompt.toLowerCase()).toMatch(/kimchi.*cabbage|cabbage.*kimchi|≠.*cabbage|not.*cabbage/);
+    expect(prompt.toLowerCase()).toMatch(/ferment|pickle|process/);
+    expect(prompt.toLowerCase()).toMatch(/dish name|namesake|title/);
   });
 });
 
@@ -73,6 +140,7 @@ describe("leaf calibration prompt", () => {
     expect(prompt.toLowerCase()).toContain("juice");
     expect(prompt).toMatch(/9\.5/);
     expect(prompt.toLowerCase()).toContain("invent");
+    expect(prompt.toLowerCase()).toMatch(/kimchi|sauerkraut|ferment/);
     expect(prompt.toLowerCase()).not.toContain("citrus juice is as sour as the fruit");
   });
 
@@ -233,6 +301,24 @@ describe("classify taste input prompt", () => {
     expect(prompt.toLowerCase()).toContain("brand");
     expect(prompt.toLowerCase()).toContain("reject");
     expect(prompt.toLowerCase()).toContain("spaghetti");
-    expect(prompt.toLowerCase()).toContain("dish");
+    expect(prompt.toLowerCase()).toContain("optimistic");
+    expect(prompt.toLowerCase()).toContain("prefer");
+    expect(prompt.toLowerCase()).toContain("unfamiliar");
+  });
+});
+
+describe("identify dish prompt", () => {
+  it("resolves bare names to the popular form and keeps specific variants", () => {
+    const native = identifyDishPrompt("paella");
+    expect(native).toContain("paella");
+    expect(native.toLowerCase()).toMatch(/popular|usually mean|most (people|commonly)/);
+    expect(native.toLowerCase()).toContain("seafood");
+    expect(native.toLowerCase()).toMatch(/valenciana|specific|qualifier|variant/);
+    expect(native.toLowerCase()).not.toMatch(/goal:\s*authentic home-country/);
+
+    const typed = identifyDishPrompt("paella valenciana", { searchMode: "typed" });
+    expect(typed).toContain("paella valenciana");
+    expect(typed.toLowerCase()).toMatch(/honor|exact|specific/);
+    expect(typed.toLowerCase()).toMatch(/typed|same language|script the user typed/);
   });
 });

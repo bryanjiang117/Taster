@@ -5,6 +5,7 @@ import {
   htmlToPageText,
   pageFetchOk,
   pageTextIsTrusted,
+  pageTitleFromHtml,
   pageUrlIsChallenge,
   recipePageUrl,
   searchWithFallback,
@@ -109,11 +110,34 @@ describe("htmlToPageText", () => {
   });
 });
 
+describe("pageTitleFromHtml", () => {
+  it("prefers og:title, then document title, then h1", () => {
+    expect(
+      pageTitleFromHtml(`
+        <html><head>
+          <title>Site name</title>
+          <meta property="og:title" content="Ceviche peruano" />
+        </head><body><h1>Ignored when og exists</h1></body></html>
+      `),
+    ).toBe("Ceviche peruano");
+    expect(
+      pageTitleFromHtml(`
+        <html><head><title>Pastel de tres leches</title></head>
+        <body><h1>Other</h1></body></html>
+      `),
+    ).toBe("Pastel de tres leches");
+    expect(
+      pageTitleFromHtml(`<html><body><h1>水煮肉片的做法</h1></body></html>`),
+    ).toBe("水煮肉片的做法");
+  });
+});
+
 describe("asFetchedPage", () => {
   it("keeps a plain string as the requested URL", () => {
     expect(asFetchedPage("hello", "https://example.com/a")).toEqual({
       text: "hello",
       url: "https://example.com/a",
+      pageTitle: "",
     });
   });
 
@@ -123,7 +147,30 @@ describe("asFetchedPage", () => {
         { text: "recipe", url: "https://example.com/real" },
         "https://vertexaisearch.cloud.google.com/grounding-api-redirect/abc",
       ),
-    ).toEqual({ text: "recipe", url: "https://example.com/real" });
+    ).toEqual({
+      text: "recipe",
+      url: "https://example.com/real",
+      pageTitle: "",
+    });
+  });
+
+  it("keeps a pageTitle from the fetcher and otherwise parses HTML", () => {
+    expect(
+      asFetchedPage(
+        {
+          text: "body only",
+          url: "https://example.com/real",
+          pageTitle: "Ceviche peruano",
+        },
+        "https://example.com/a",
+      ).pageTitle,
+    ).toBe("Ceviche peruano");
+    expect(
+      asFetchedPage(
+        "<html><head><title>Alfajores marplatenses</title></head><body></body></html>",
+        "https://example.com/a",
+      ).pageTitle,
+    ).toBe("Alfajores marplatenses");
   });
 });
 
@@ -214,6 +261,7 @@ describe("FetchPageClient", () => {
       text: expect.stringContaining("papaya"),
       url: "https://example.com/som-tam",
       status: 200,
+      pageTitle: "",
     });
   });
 });

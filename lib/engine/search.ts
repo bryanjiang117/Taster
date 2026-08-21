@@ -18,17 +18,26 @@ export type FetchedPage = {
   text: string;
   url: string;
   status?: number;
+  /** From raw HTML before body extraction — used for dish matching. */
+  pageTitle?: string;
 };
 
 export function asFetchedPage(
   result: string | FetchedPage,
   requestedUrl: string,
 ): FetchedPage {
-  if (typeof result === "string") return { text: result, url: requestedUrl };
+  if (typeof result === "string") {
+    return {
+      text: result,
+      url: requestedUrl,
+      pageTitle: pageTitleFromHtml(result),
+    };
+  }
   return {
     text: result.text,
     url: result.url || requestedUrl,
     status: result.status,
+    pageTitle: result.pageTitle ?? pageTitleFromHtml(result.text),
   };
 }
 
@@ -120,6 +129,19 @@ export function htmlToPageText(html: string): string {
   return parts.join("\n").slice(0, 12_000);
 }
 
+/** Page-grounded title for dish matching — never trust LLM search/extract titles alone. */
+export function pageTitleFromHtml(html: string): string {
+  const $ = cheerio.load(html);
+  const og =
+    $('meta[property="og:title"]').attr("content")?.trim() ||
+    $('meta[name="og:title"]').attr("content")?.trim() ||
+    "";
+  if (og) return og;
+  const docTitle = $("title").first().text().replace(/\s+/g, " ").trim();
+  if (docTitle) return docTitle;
+  return $("h1").first().text().replace(/\s+/g, " ").trim();
+}
+
 export function pageTextIsTrusted(text: string): boolean {
   const trimmed = text.trim();
   if (!trimmed) return false;
@@ -173,6 +195,7 @@ export class FetchPageClient implements PageClient {
       text: htmlToPageText(html),
       url: response.url || url,
       status: response.status,
+      pageTitle: pageTitleFromHtml(html),
     };
   }
 }

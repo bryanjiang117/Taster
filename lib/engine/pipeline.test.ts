@@ -79,7 +79,7 @@ describe("profileDish pipeline", () => {
     };
 
     const pages: PageClient = {
-      fetchText: async (url) => `recipe page ${url}`,
+      fetchText: async (url) => pageHtml("ส้มตำ", `recipe page ${url}`),
     };
 
     const store = new IngredientStore([
@@ -178,7 +178,7 @@ describe("profileDish pipeline", () => {
         lookupIngredient: async () => ({ kind: "llm", taste: soy }),
       },
       search: { search: async () => [] },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       persistLearned: async () => {
         persisted += 1;
       },
@@ -230,7 +230,7 @@ describe("profileDish pipeline", () => {
           { title: "phở", url: "https://example.com/pho-3", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "x".repeat(500) },
+      pages: { fetchText: async () => pageHtml("phở", "x".repeat(500)) },
       store: new IngredientStore([]),
       usda: {
         search: async (name) => {
@@ -303,7 +303,7 @@ describe("profileDish pipeline", () => {
           { title: "麻婆豆腐", url: "https://example.com/mapo-3", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
       usda: {
         search: async (name) => {
@@ -379,7 +379,7 @@ describe("profileDish pipeline", () => {
           { title: "ส้มตำ", url: "https://example.com/tam-3", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "recipe page with json-ld" },
+      pages: { fetchText: async () => pageHtml("ส้มตำ", "recipe page with json-ld " + "x".repeat(400)) },
       store: new IngredientStore([
         {
           ingredient: "lime",
@@ -477,7 +477,7 @@ describe("profileDish pipeline", () => {
           { title: "ceviche", url: "https://example.com/cev-3", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "recipe page with json-ld" },
+      pages: { fetchText: async () => pageHtml("ceviche", "recipe page with json-ld " + "x".repeat(400)) },
       store: new IngredientStore([
         {
           ingredient: "lime",
@@ -581,7 +581,7 @@ describe("profileDish pipeline", () => {
           { title: "ส้มตำ", url: "https://example.com/tam-3", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "recipe page with json-ld" },
+      pages: { fetchText: async () => pageHtml("ส้มตำ", "recipe page with json-ld " + "x".repeat(400)) },
       store: new IngredientStore([
         papaya,
         carrot,
@@ -742,7 +742,7 @@ describe("profileDish pipeline", () => {
           { title: "正宗麻婆豆腐", url: "https://example.com/mapo-3", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
 
@@ -803,7 +803,7 @@ describe("profileDish pipeline", () => {
           { title: "水煮肉片", url: "https://example.com/shuizhu-3", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("水煮肉片") },
       store: loadSeedStore(),
       onProgress: (event) => {
         if (event.type === "ingredients") {
@@ -852,7 +852,7 @@ describe("profileDish pipeline", () => {
           { title: "麻婆豆腐", url: "https://example.com/mapo-3", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
 
@@ -886,7 +886,7 @@ describe("profileDish pipeline", () => {
             { title: "麻婆豆腐", url: "https://example.com/mapo", snippet: "" },
           ],
         },
-        pages: { fetchText: async () => "not a recipe" },
+        pages: { fetchText: async () => pageHtml("麻婆豆腐", "not a recipe") },
         store: loadSeedStore(),
       }),
     ).rejects.toThrow(/Found 1 pages.*none produced a usable recipe/i);
@@ -905,7 +905,7 @@ describe("profileDish pipeline", () => {
           { title: "麻婆豆腐", url: "https://example.com/mapo-1", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
       recipeLimit: 1,
     });
@@ -1065,7 +1065,7 @@ describe("profileDish pipeline", () => {
           { title: "麻婆豆腐", url: "https://example.com/mapo-1", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "Enable JavaScript to view this recipe." },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐", "Enable JavaScript to view this recipe.") },
       store: loadSeedStore(),
       recipeLimit: 1,
     });
@@ -1287,7 +1287,7 @@ describe("profileDish pipeline", () => {
           }));
         },
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
     expect(queries).toHaveLength(1);
@@ -1317,7 +1317,7 @@ describe("profileDish pipeline", () => {
           return [{ title: "麻婆豆腐", url: "https://example.com/mapo-1", snippet: "" }];
         },
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
     expect(queries.length).toBeGreaterThan(1);
@@ -1355,7 +1355,7 @@ describe("profileDish pipeline", () => {
           { title: "鱼香茄子", url: "https://example.com/eggplant", snippet: "garlic eggplant" },
         ],
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
     expect(result.recipesAnalyzed).toBe(3);
@@ -1381,7 +1381,7 @@ describe("profileDish pipeline", () => {
           { title: "麻婆豆腐", url: "https://example.com/mapo-1", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
     expect(result.recipesAnalyzed).toBe(1);
@@ -1412,7 +1412,7 @@ describe("profileDish pipeline", () => {
             snippet: "",
           })),
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
     expect(maxInFlight).toBe(3);
@@ -1443,7 +1443,7 @@ describe("profileDish pipeline", () => {
             snippet: "",
           })),
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
     expect(extracted).toEqual([
@@ -1477,7 +1477,7 @@ describe("profileDish pipeline", () => {
           { title: "麻婆豆腐", url: "https://example.com/mapo-3", snippet: "" },
         ],
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
     expect(result.recipesAnalyzed).toBe(3);
@@ -1510,7 +1510,7 @@ describe("profileDish pipeline", () => {
             snippet: "",
           })),
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
     expect(extracted).toHaveLength(3);
@@ -1551,7 +1551,7 @@ describe("profileDish pipeline", () => {
             snippet: "",
           })),
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
     expect(result.recipesAnalyzed).toBeGreaterThan(3);
@@ -1601,7 +1601,7 @@ describe("profileDish pipeline", () => {
           }));
         },
       },
-      pages: { fetchText: async () => "" },
+      pages: { fetchText: async () => pageHtml("麻婆豆腐") },
       store: loadSeedStore(),
     });
     expect(queries.length).toBeGreaterThan(1);
@@ -1657,7 +1657,7 @@ describe("profileDish pipeline", () => {
             snippet: "",
           })),
       },
-      pages: { fetchText: async () => "recipe page" },
+      pages: { fetchText: async () => pageHtml("ส้มตำ", "recipe page " + "x".repeat(400)) },
       store: new IngredientStore([
         {
           ingredient: "lime",
@@ -1699,8 +1699,12 @@ describe("profileDish pipeline", () => {
   });
 });
 
-function longPageText(): string {
-  return "tofu soy sauce pork chili garlic ginger ".repeat(40);
+function pageHtml(title: string, body = "x".repeat(500)): string {
+  return `<html><head><title>${title}</title><meta property="og:title" content="${title}" /></head><body><h1>${title}</h1><p>${body}</p></body></html>`;
+}
+
+function longPageText(title = "麻婆豆腐"): string {
+  return pageHtml(title, "tofu soy sauce pork chili garlic ginger ".repeat(40));
 }
 
 function mapoRecipe(

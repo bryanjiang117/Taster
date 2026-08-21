@@ -6,7 +6,15 @@ import {
 } from "./dish-cache";
 import { DishStore } from "./dish-store";
 import { dishConfidence, sourceConfidence } from "./confidence";
-import { combineRecipeTaste } from "./combine";
+import {
+  alignScoreContributions,
+  attributeRecipeTaste,
+  contributionsFromPureTaste,
+  roundScoreContributions,
+  scaleScoreContributions,
+  type MixIngredient,
+  type ScoreContributions,
+} from "./combine";
 import { applyEnglishNames, uniqueIngredientNames } from "./english-names";
 import {
   matchesDish,
@@ -65,6 +73,7 @@ import {
 import {
   MAX_RESOLUTION_DEPTH,
   type DishOrigin,
+  type IngredientMix,
   type ProcessEffect,
   type Recipe,
   type ResolvedIngredient,
@@ -83,10 +92,14 @@ export type DishProfileResult = {
       name: string;
       volumeMl: number;
       occurrence: { used: number; total: number };
+      role?: "in" | "out";
+      mix?: IngredientMix;
     }>;
     finalVolumeMl: number;
   };
   provenance: ResolvedIngredient[];
+  /** Top contributors toward each final 0–10 score (points sum toward that score). */
+  scoreContributions?: ScoreContributions;
   /** Side/serving items that never enter the dish; shown as a footnote with primary flavors. */
   footnote?: string | null;
   timesTasted?: number;
@@ -118,7 +131,7 @@ export type PipelineDeps = {
   duke?: DukeClient;
 };
 
-export const COLLECT_TIME_LIMIT_MS = 30_000;
+export const COLLECT_TIME_LIMIT_MS = 45_000;
 
 type TasteRun = {
   store: IngredientStore;
@@ -282,7 +295,7 @@ async function tasteFromRecipes(
   const representative = await runLoggedStep(
     emit,
     "representative",
-    `Building representative recipe from ${recipes.length} sources (≥50% occurrence, median volume share)`,
+    `Building representative recipe from ${recipes.length} sources (occurrence-weighted mean volume share)`,
     async () => {
       const startingVolume = median(
         recipes.map((recipe) =>
@@ -324,29 +337,39 @@ async function tasteFromRecipes(
   }
 
   const byName = new Map(resolved.map((item) => [item.ingredient, item]));
-  const mixable = representative.built.ingredients.flatMap((ingredient) => {
-    const item = byName.get(normalizeIngredientName(ingredient.name));
-    if (!item) return [];
-    return [
-      {
-        volumeMl: ingredient.volumeMl,
-        taste: item.taste,
-        role: ingredient.role,
-        mix: ingredient.mix,
-      },
-    ];
-  });
+  const mixable: MixIngredient[] = representative.built.ingredients.flatMap(
+    (ingredient) => {
+      const item = byName.get(normalizeIngredientName(ingredient.name));
+      if (!item) return [];
+      return [
+        {
+          name: normalizeIngredientName(ingredient.name),
+          volumeMl: ingredient.volumeMl,
+          taste: item.taste,
+          role: ingredient.role,
+          mix: ingredient.mix,
+        },
+      ];
+    },
+  );
 
-  const taste = await runLoggedStep(
+  const { taste, scoreContributions } = await runLoggedStep(
     emit,
     "score",
     "Computing taste from ingredient amounts, prep, and volume",
     async () => {
-      const scored = combineRecipeTaste(
+      const attributed = attributeRecipeTaste(
         mixable,
         representative.built.finalVolumeMl,
       );
-      return applySolubleRetention(scored, representative.volumeInfo.solubleRetention);
+      const retention = representative.volumeInfo.solubleRetention;
+      return {
+        taste: applySolubleRetention(attributed.taste, retention),
+        scoreContributions: scaleScoreContributions(
+          attributed.contributions,
+          retention,
+        ),
+      };
     },
     deps.signal,
   );
@@ -381,11 +404,12 @@ async function tasteFromRecipes(
 
   const foundItems = foundIngredientsFromRecipes(recipes, run.store);
   const footnote = accompanimentFootnote(foundItems);
+  const roundedTaste = roundTaste(taste);
 
   return {
     dish: query,
     origin,
-    taste: roundTaste(taste),
+    taste: roundedTaste,
     confidence: round2(
       dishConfidence(contributions, { flavorInconsistency: inconsistency }),
     ),
@@ -399,6 +423,10 @@ async function tasteFromRecipes(
       finalVolumeMl: round2(representative.built.finalVolumeMl),
     },
     provenance: resolved,
+    scoreContributions: finalizeScoreContributions(
+      scoreContributions,
+      roundedTaste,
+    ),
     footnote,
     _recipes: recipes,
   };
@@ -529,7 +557,8 @@ async function collectRecipes(
     return batch;
   };
 
-  const acceptRecipe = async (hit: SearchHit, recipe: Recipe | null) => {
+  const acceptRecipe = async (hit: SearchHit, extracted: ExtractedPage) => {
+    const { recipe, pageTitle, pageUrl } = extracted;
     if (!recipe?.ingredients.length) {
       logRecipeExtract("empty", hit, recipe);
       return;
@@ -538,7 +567,7 @@ async function collectRecipes(
       logRecipeExtract("too-few", hit, recipe);
       return;
     }
-    if (!recipeIsForDish(recipe, hit, identity)) {
+    if (!recipeIsForDish(recipe, hit, identity, { url: pageUrl, pageTitle })) {
       skippedOtherDish += 1;
       logRecipeExtract("other-dish", hit, recipe);
       deps.onProgress?.({
@@ -627,9 +656,16 @@ function recipeIsForDish(
   recipe: Recipe,
   hit: SearchHit,
   identity: DishIdentity,
+  page: { url: string; pageTitle: string },
 ): boolean {
-  return recipeMatchesDish(recipe.title, hit, identity);
+  return recipeMatchesDish(recipe.title, hit, identity, page);
 }
+
+type ExtractedPage = {
+  recipe: Recipe | null;
+  pageTitle: string;
+  pageUrl: string;
+};
 
 function emptyRecipeMessage(dish: string, collected: RecipeCollection): string {
   if (collected.hitCount === 0 && collected.searchErrors.length > 0) {
@@ -654,13 +690,19 @@ async function extractOneRecipe(
   hit: SearchHit,
   origin: DishOrigin,
   deps: PipelineDeps,
-): Promise<Recipe | null> {
+): Promise<ExtractedPage> {
   const language = origin.language;
   const culinary = culinaryContextFromOrigin(origin);
   const label = hit.title || hit.url;
   let best: Recipe | null = null;
   let pageUrl = hit.url;
+  let pageTitle = "";
   let fetched: ReturnType<typeof asFetchedPage>;
+  const done = (recipe: Recipe | null): ExtractedPage => ({
+    recipe,
+    pageTitle,
+    pageUrl,
+  });
   try {
     fetched = asFetchedPage(
       await runLoggedStep(
@@ -674,11 +716,12 @@ async function extractOneRecipe(
     );
   } catch (error) {
     rethrowIfAborted(error);
-    return null;
+    return done(null);
   }
-  if (!pageFetchOk(fetched)) return null;
+  if (!pageFetchOk(fetched)) return done(null);
   const challenge = pageUrlIsChallenge(fetched.url);
   pageUrl = recipePageUrl(fetched.url, hit.url);
+  if (!challenge) pageTitle = fetched.pageTitle ?? pageTitleFromHtml(fetched.text);
 
   try {
     if (!challenge && pageTextIsTrusted(fetched.text)) {
@@ -696,7 +739,7 @@ async function extractOneRecipe(
       );
       best = richerRecipe(best, recipe);
       if (usableExtract(best)) {
-        return finishExtract(withPageUrl(best, pageUrl), language);
+        return done(finishExtract(withPageUrl(best, pageUrl), language));
       }
     }
   } catch (error) {
@@ -714,13 +757,13 @@ async function extractOneRecipe(
       );
       best = richerRecipe(best, fromUrl);
       if (usableExtract(best)) {
-        return finishExtract(withPageUrl(best, pageUrl), language);
+        return done(finishExtract(withPageUrl(best, pageUrl), language));
       }
     } catch (error) {
       rethrowIfAborted(error);
-      return finishExtract(withPageUrl(best, pageUrl), language);
+      return done(finishExtract(withPageUrl(best, pageUrl), language));
     }
-    return finishExtract(withPageUrl(best, pageUrl), language);
+    return done(finishExtract(withPageUrl(best, pageUrl), language));
   }
 
   try {
@@ -732,9 +775,9 @@ async function extractOneRecipe(
     best = richerRecipe(best, recipe);
   } catch (error) {
     rethrowIfAborted(error);
-    return finishExtract(withPageUrl(best, pageUrl), language);
+    return done(finishExtract(withPageUrl(best, pageUrl), language));
   }
-  return finishExtract(withPageUrl(best, pageUrl), language);
+  return done(finishExtract(withPageUrl(best, pageUrl), language));
 }
 
 function withPageUrl(recipe: Recipe | null, url: string): Recipe | null {
@@ -1117,6 +1160,8 @@ function finishIngredientProfile(
     ],
   });
 
+  const rounded = roundTaste(clampTaste(resolved.taste));
+
   return {
     dish: query,
     origin: {
@@ -1128,7 +1173,7 @@ function finishIngredientProfile(
       languageCode: "en",
       searchQueries: [],
     },
-    taste: roundTaste(clampTaste(resolved.taste)),
+    taste: rounded,
     confidence: round2(
       dishConfidence([{ confidence: resolved.confidence, contribution: 1 }]),
     ),
@@ -1144,6 +1189,10 @@ function finishIngredientProfile(
       finalVolumeMl: 100,
     },
     provenance: [resolved],
+    scoreContributions: finalizeScoreContributions(
+      contributionsFromPureTaste(resolved.ingredient, rounded),
+      rounded,
+    ),
     footnote: null,
     fromCache,
   };
@@ -1181,14 +1230,21 @@ function resultFromCachedDish(
   record: CachedDish,
   fromCache: boolean,
 ): DishProfileResult {
+  const taste = record.taste;
   return {
     dish,
     origin: record.snapshot.origin,
-    taste: record.taste,
+    taste,
     confidence: record.snapshot.confidence,
     recipesAnalyzed: record.snapshot.recipesAnalyzed,
     representative: record.snapshot.representative,
     provenance: record.snapshot.provenance,
+    scoreContributions: scoreContributionsFromParts(
+      record.snapshot.representative,
+      record.snapshot.provenance,
+      taste,
+      record.snapshot.recipesAnalyzed,
+    ),
     footnote:
       record.snapshot.footnote ??
       accompanimentFootnote(record.snapshot.ingredients),
@@ -1240,6 +1296,60 @@ async function persistDishProfile(
     );
   }
   return updated;
+}
+
+function finalizeScoreContributions(
+  contributions: ScoreContributions,
+  taste: TasteProfile,
+): ScoreContributions {
+  return roundScoreContributions(alignScoreContributions(contributions, taste));
+}
+
+function scoreContributionsFromParts(
+  representative: DishProfileResult["representative"],
+  provenance: ResolvedIngredient[],
+  taste: TasteProfile,
+  recipesAnalyzed: number,
+): ScoreContributions {
+  if (recipesAnalyzed === 0 && provenance.length === 1) {
+    const only = provenance[0]!;
+    return finalizeScoreContributions(
+      contributionsFromPureTaste(only.ingredient, taste),
+      taste,
+    );
+  }
+
+  const byName = new Map(
+    provenance.map((item) => [normalizeIngredientName(item.ingredient), item]),
+  );
+  const mixable: MixIngredient[] = representative.ingredients.flatMap(
+    (ingredient) => {
+      const item = byName.get(normalizeIngredientName(ingredient.name));
+      if (!item) return [];
+      return [
+        {
+          name: normalizeIngredientName(ingredient.name),
+          volumeMl: ingredient.volumeMl,
+          taste: item.taste,
+          role: ingredient.role,
+          mix: ingredient.mix,
+        },
+      ];
+    },
+  );
+
+  if (!mixable.length || representative.finalVolumeMl <= 0) {
+    return finalizeScoreContributions(
+      contributionsFromPureTaste(provenance[0]?.ingredient ?? "ingredient", taste),
+      taste,
+    );
+  }
+
+  const attributed = attributeRecipeTaste(
+    mixable,
+    representative.finalVolumeMl,
+  );
+  return finalizeScoreContributions(attributed.contributions, taste);
 }
 
 function median(values: number[]): number {

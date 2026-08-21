@@ -9,6 +9,13 @@ export type DishHitText = {
   url: string;
 };
 
+export type PageDishEvidence = {
+  /** Live page URL after redirects (not a search-hit label). */
+  url?: string;
+  /** Document / og / h1 title from fetched HTML. */
+  pageTitle?: string;
+};
+
 export function matchesDish(text: string, identity: DishIdentity): boolean {
   const hay = fold(text);
   if (!hay) return false;
@@ -17,28 +24,41 @@ export function matchesDish(text: string, identity: DishIdentity): boolean {
   if (hasNativeName(hay, native)) return true;
 
   const dish = fold(identity.dish);
-  if (dish.length >= 2 && hay.includes(dish)) return true;
+  if (dish.length < 2) return false;
+  if (hay.includes(dish)) return true;
   if (compactContains(compact(hay), compact(dish))) return true;
 
   const tokens = dish.split(/\s+/).filter((token) => token.length >= 2);
-  return tokens.length > 0 && tokens.every((token) => fuzzyContains(hay, token));
+  if (tokens.length === 0) return false;
+
+  // Multi-word Latin names need a contiguous phrase (tres leches), not
+  // scattered tokens (tres … leche elsewhere on the page).
+  if (tokens.length >= 2 && !primaryScript(dish)) {
+    return phraseContains(hay, tokens);
+  }
+
+  return tokens.every((token) => fuzzyContains(hay, token));
 }
 
 export function recipeMatchesDish(
   recipeTitle: string | undefined,
   hit: DishHitText,
   identity: DishIdentity,
+  page?: PageDishEvidence,
 ): boolean {
-  // A native-script extract that names another dish is a related recipe or a
-  // URL-context miss. Do not let a matching search hit launder those ingredients.
-  // English titles still must not veto: "Sichuan boiled beef" is the same dish.
+  // Extract title is veto-only: an honest other-dish name rejects. A matching
+  // extract title must not accept — models invent the query dish on wrong URLs.
   if (extractedTitleIsOtherDish(recipeTitle, identity)) return false;
-  const page = fold(`${hit.title} ${hit.snippet} ${hit.url}`);
-  if (hasNativeName(page, fold(identity.nativeName))) return true;
-  return matchesDish(
-    `${recipeTitle ?? ""} ${hit.title} ${hit.snippet} ${hit.url}`,
-    identity,
-  );
+
+  const pageUrl = page?.url ?? hit.url;
+  const pageTitle = page?.pageTitle ?? "";
+  if (matchesDish(`${pageUrl} ${pageTitle}`, identity)) return true;
+
+  // No document title (captcha / empty shell): search-hit title is the only
+  // page-identity signal left. Do not use this fallback when HTML already
+  // named a different dish — that is how wrong URLs get laundered.
+  if (pageTitle) return false;
+  return matchesDish(`${hit.title} ${hit.snippet}`, identity);
 }
 
 function extractedTitleIsOtherDish(
@@ -49,19 +69,24 @@ function extractedTitleIsOtherDish(
   if (!extracted) return false;
   if (matchesDish(extracted, identity)) return false;
   const native = fold(identity.nativeName);
-  if (native.length < 2) return false;
-  if (nativeTitleAgrees(extracted, native)) return false;
-  return sameNonLatinScript(extracted, native);
+  if (native.length >= 2 && nativeTitleAgrees(extracted, native)) return false;
+
+  const extractScript = primaryScript(extracted);
+  const nativeScript = primaryScript(native);
+
+  // Same non-Latin script, different dish (鱼香茄子 vs 水煮肉片).
+  if (nativeScript && extractScript === nativeScript) return true;
+
+  // Latin extract naming a different Latin-script dish (torta vs paella).
+  // Do not veto Latin titles when the native name is non-Latin — those are
+  // usually translations of the same dish.
+  if (!extractScript && !nativeScript && native.length >= 2) return true;
+
+  return false;
 }
 
 function nativeTitleAgrees(extracted: string, native: string): boolean {
   return extracted.includes(native) || native.includes(extracted);
-}
-
-function sameNonLatinScript(a: string, b: string): boolean {
-  const script = primaryScript(b);
-  if (!script) return false;
-  return primaryScript(a) === script;
 }
 
 function primaryScript(text: string): string | null {
@@ -77,6 +102,26 @@ function primaryScript(text: string): string | null {
 
 function hasNativeName(hay: string, native: string): boolean {
   return native.length >= 2 && hay.includes(native);
+}
+
+function phraseContains(hay: string, tokens: string[]): boolean {
+  const words = hay.split(/\s+/).filter(Boolean);
+  if (words.length < tokens.length) return false;
+  for (let i = 0; i <= words.length - tokens.length; i++) {
+    let ok = true;
+    for (let j = 0; j < tokens.length; j++) {
+      const token = tokens[j]!;
+      const word = words[i + j]!;
+      if (word === token) continue;
+      const maxDist = maxEdits(token.length);
+      if (maxDist === 0 || levenshtein(word, token) > maxDist) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) return true;
+  }
+  return false;
 }
 
 function compactContains(hay: string, needle: string): boolean {

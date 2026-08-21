@@ -155,4 +155,25 @@ describe("Gemini JSON mapping", () => {
       scale: { spicy: 1.2 },
     });
   });
+
+  it("keeps a short mix.why and trims it to at most two words", () => {
+    const recipe = recipeFromExtractJson(
+      {
+        ingredients: [
+          {
+            name: "oil",
+            amount: 2,
+            unit: "cup",
+            role: "in",
+            mix: { intensity: 0, why: "  cooking liquid bath leftover  " },
+          },
+        ],
+      },
+      "https://example.com/fry",
+    );
+    expect(recipe?.ingredients[0]?.mix).toEqual({
+      intensity: 0,
+      why: "cooking liquid",
+    });
+  });
 });

@@ -74,14 +74,45 @@ export interface LlmClient {
 
 export function classifyTasteInputPrompt(query: string): string {
   return `Classify this taste-profile query.
-Accept only:
-- "dish": a prepared food or drink people cook or order (pad thai, ceviche, latte, chocolate cake).
+Be optimistic: prefer "dish" or "ingredient" over "reject" whenever the query could plausibly be food. 
+Allow minor spelling errors, especially for romanizations.
+- "dish": a prepared food or drink people cook or order (pad thai, ceviche, latte, chocolate cake). Prefer a dish, including if it's uncommon or regional.
 - "ingredient": a singular grocery food or cooking ingredient (lime, salt, chicken breast, fish sauce).
 If the same word is both a grocery and a dish people cook or order (spaghetti, ramen, pizza, salad), classify as "dish".
-Reject brands, product SKUs, random/gibberish text, sentences, URLs, and non-food.
+Reject only clear brands, product SKUs, random/gibberish keyboard mash, sentences, URLs, and obvious non-food. Do not reject because a name is unfamiliar, slangy — food reading wins.
 For ingredient, return a short singular English grocery name in "name".
 For reject, give a short "reason".
 QUERY: ${JSON.stringify(query)}`;
+}
+
+export function identifyDishPrompt(
+  dish: string,
+  options?: IdentifyDishOptions,
+): string {
+  const typed = options?.searchMode === "typed";
+  const disambiguate = `First resolve which form of the dish the user most likely means.
+- If the query is a bare or generic dish name with no style or regional qualifier, pick the form most people who type that name usually mean (restaurant / tourist / widely cooked popular form). Example: "paella" → popular salty seafood paella, not paella Valenciana.
+- If the query names a specific style, region, or variant, honor that form exactly. Example: "paella valenciana" → traditional Valencian paella, not seafood.
+- Romanizations and native-script names of the same dish are the same food, not different variants.
+Then return country, culture, nativeName for that resolved form in the origin language (e.g. Mapo tofu → 麻婆豆腐), language, languageCode, and 3 web queries aimed at that form.`;
+  if (typed) {
+    return `Identify the culinary origin of "${dish}".
+${disambiguate}
+Return 3 web queries in the SAME language and script the user typed.
+These queries should find the internationalized / diaspora recipes for the resolved form as commonly cooked from recipes in that language.
+Each query MUST include the user's dish name plus a recipe word in that language (e.g. recipe, recette, receta).
+Use at least one unquoted query. You may include one quoted exact-name query.
+Do not switch the queries into the origin language unless the user already typed in that language.
+Do not use generic cuisine queries.`;
+  }
+  return `Identify the culinary origin of "${dish}".
+${disambiguate}
+Return 3 native-language web queries for the resolved form.
+Each query MUST include the native dish name plus a recipe word.
+Use at least one unquoted query so search can match title variants, e.g. 麻婆豆腐 食谱, 麻婆豆腐 做法.
+You may also include one quoted exact-name query.
+Do not use generic cuisine queries (川菜, 家常菜, Chinese food).
+Search in the origin language for the resolved form (popular when bare; exact when specified) — not a rarer traditional sibling the user did not name.`;
 }
 
 export function culinaryContextFromOrigin(origin: DishOrigin): CulinaryContext {
@@ -100,7 +131,7 @@ export function culinaryContextLine(context?: CulinaryContext): string {
   const cuisine = [context.culture, context.country].filter(Boolean).join(", ");
   const language = context.language ? ` Language: ${context.language}.` : "";
   return `DISH: ${context.dish}${native}.${cuisine ? ` Cuisine: ${cuisine}.` : ""}${language}
-Name ingredients using this dish's culinary context, not dictionary English. Regional false friends must map to the food actually used in this cuisine (Latin American Spanish "limón" in ceviche is lime, not lemon). If the catalog has both a dictionary match and the cuisine's food, prefer the cuisine's food when the source name is ambiguous.
+Name ingredients using this dish's culinary context, not dictionary English. Regional false friends must map to the food actually used in this cuisine (Latin American Spanish "limón" in ceviche is lime, not lemon). Ambiguous generics must become the cuisine-typical grocery even when a dictionary/catalog generic exists: Chinese / Cantonese / Sichuan sausage, 香肠, or 腊肠 → chinese sausage or lap cheong, never plain sausage. Prefer a short English grocery name when one is standard; if English is awkward or uncommon, a well-known romanized native name is fine. If the catalog has both a dictionary match and the cuisine's food, prefer the cuisine's food when the source name is ambiguous.
 Typical food: this ingredient is for THAT dish. Pick and score the food the cuisine actually uses, not US supermarket false friends. Chili / chili pepper in a spicy Chinese, Thai, Sichuan, Mexican, or similar dish is the hot chili (dried 干辣椒, Thai bird's eye), never American sweet chili sauce and never bell or sweet pepper. If a shortlist row is sweet pepper or sweet chili sauce and the dish is spicy-chili cookery, reject that row.`;
 }
 
@@ -112,10 +143,13 @@ export function canonicalizeIngredientNamesPrompt(
   const contextLine = culinaryContextLine(context);
   return `Normalize each extracted ingredient.
 ${contextLine}
-Each mapping's "to" must be one singular short English grocery name, or a comma-separated list if the extracted line is multiple foods.
-If it is the same food as an item in CATALOG, copy that catalog string exactly (cut, packing, and marketing copy do not make a new food). Do not upgrade a generic name to a different product just because the catalog is more specific (chili in som tam or mapo tofu is the hot pepper, never sweet chili sauce).
-If it is a new food, invent a short singular English grocery name that preserves heat, fermentation, and form (thai chili, chili oil, fermented black bean, chili bean paste, msg).
-Keep distinct foods distinct (green papaya ≠ papaya, juice ≠ the vegetable, chicken breast ≠ chicken, lime ≠ lemon, chili ≠ sweet chili, chili oil ≠ canola oil, chili bean paste ≠ chili with beans).
+Each mapping's "to" must be one singular short English grocery name (or a well-known romanized native name when English is awkward), or a comma-separated list if the extracted line is multiple foods.
+If the source name is culturally ambiguous in this dish's cuisine, emit the cuisine-typical grocery name even when CATALOG only has the dictionary generic (香肠 / sausage in Cantonese clay pot rice → chinese sausage or lap cheong, not sausage; chili in som tam or mapo tofu is the hot pepper, never sweet chili sauce). Prefer an exact cuisine-specific catalog string when it exists; otherwise invent that short singular name. Do not invent a cuisine form when the source is already specific the other way (italian sausage or bratwurst in a Chinese dish stays itself).
+If it is the same food as an item in CATALOG, copy that catalog string exactly (cut, packing, and marketing copy do not make a new food).
+If it is a new food, invent a short singular English grocery name (or romanized native) that preserves heat, fermentation, form, and cuisine (thai chili, chili oil, fermented black bean, chili bean paste, chinese sausage, lap cheong, msg).
+Keep distinct foods distinct (green papaya ≠ papaya, juice ≠ the vegetable, chicken breast ≠ chicken, lime ≠ lemon, chili ≠ sweet chili, chili oil ≠ canola oil, chili bean paste ≠ chili with beans, chinese sausage ≠ sausage).
+Process forms are not the base food — never collapse them into a catalog parent just because the parent is listed (kimchi ≠ cabbage, sauerkraut ≠ cabbage, pickle ≠ cucumber, yogurt ≠ milk, bacon ≠ pork, dried shrimp ≠ shrimp).
+If the dish name or native title names a grocery food, that namesake must stay itself when it appears in NAMES (kimchi in kimchi fried rice stays kimchi, not cabbage; lemon in lemon chicken stays lemon).
 JSON {"mappings":[{"from":"...","to":"..."}]}
 NAMES: ${JSON.stringify(names)}
 CATALOG: ${JSON.stringify(catalog)}`;
@@ -123,7 +157,7 @@ CATALOG: ${JSON.stringify(catalog)}`;
 
 function preferTargetDishLine(context?: CulinaryContext): string {
   if (!context?.dish) return "";
-  return `Prefer ${context.dish} if several dishes appear. Romanized spellings of the same dish still count. Extract the recipe; do not return empty ingredients just because the title spelling differs.`;
+  return `If this page is a recipe for a different dish than ${context.dish}, return {"ingredients":[]} and put the page's real title in "title" — never rename the page to the target dish. If several recipes appear, prefer the one for ${context.dish}. Romanized spellings of the same dish still count. Do not return empty ingredients just because the title spelling differs.`;
 }
 
 export function recipeExtractPrompt(
@@ -134,13 +168,13 @@ export function recipeExtractPrompt(
   return `Extract a cooking recipe from this page text. If it is not a recipe, return {"ingredients":[]}.
 ${culinaryContextLine(context)}
 ${preferTargetDishLine(context)}
-Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, piece). Prefer g or lb for meat and other large solids; use piece only for countable items. If a quantity is missing, still include the ingredient with name only.
+Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, dash, piece). Prefer g or lb for meat and other large solids; use piece only for countable foods (onion, chicken piece), never for salt/pepper/spices. Keep vague kitchen wording as pinch/dash (a pinch of salt → amount 1 unit pinch — not tbsp, not piece, not 15 ml). For "to taste" / "season with" / missing amount on a seasoning, omit amount and unit so code can size it from the dish — or give a measured guess that fits THIS recipe size. If a quantity is missing on a bulk food, still include the ingredient with name only.
 Write each ingredient as exactly one singular English grocery food. Never list two foods in one ingredient.
 For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.
 - "out" = side, garnish, dip, "for serving", lemon wedges on the side, bread, packaging, or anything not meant to flavor the cooked dish itself.
 When unsure, use "in".
-For each "in" ingredient, use culinary common sense about how THIS recipe treats it (bloomed in oil, drained, charred, fermented, reduced, crushed, raw, freshly cracked, etc.). Return mix.intensity (1 = the amount already implies the strength, 0 = none of it tastes in the bowl, >1 if concentrated into the dish) and mix.scale per-dimension multipliers only when prep changes that dimension. Deep-fry / frying oil that is drained, pasta water, and blanching water are intensity 0 — they must not fill the served volume. A spoon of stir-fry oil or chili oil that is eaten stays 1. Freshly cracked black pepper is still not chili: scale spicy so the 0.2 leaf becomes ≈ 0.5. Do not output the dish's final 0-10 taste vector.
+For each "in" ingredient, use culinary common sense about how THIS recipe treats it (bloomed in oil, drained, charred, fermented, reduced, crushed, raw, freshly cracked, evaporated, absorbed into rice/grain, etc.). mix.intensity is the fraction of the listed amount that contributes to the final served dish (1 = listed amount is in the product as-is, 0 = none of it remains in what you eat, >1 if concentrated into the dish). Also return mix.scale per-dimension multipliers only when prep changes that dimension. When intensity is not 1 (or role is "out"), also set mix.why to one or two short words (marinade, evaporated, absorbed, drained, concentrated, on the side). Water or stock that cooks into rice/paella/risotto/pasta and evaporates or is absorbed must be intensity 0 for plain water, or a low residual for flavored stock/broth/wine so its taste still contributes — never leave evaporated cooking water at intensity 1 or it will dilute the dish. Deep-fry / frying oil that is drained, pasta water, and blanching water are intensity 0. A spoon of stir-fry oil or chili oil that is eaten stays 1. Soup or stew broth that is served as liquid stays near 1. Freshly cracked black pepper is still not chili: scale spicy so the 0.2 leaf becomes ≈ 0.5. Do not output the dish's final 0-10 taste vector.
 Estimate cooking process volume effects in ml (negative for evaporation/discard/absorption).
 SOURCE: ${sourceUrl}
 TEXT: ${pageText.slice(0, 9000)}`;
@@ -153,13 +187,13 @@ export function recipeExtractFromUrlPrompt(
   return `Read this recipe URL and extract the recipe. If it is not a recipe, return {"ingredients":[]}.
 ${culinaryContextLine(context)}
 ${preferTargetDishLine(context)}
-Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, piece). Prefer g or lb for meat and other large solids; use piece only for countable items. If a quantity is missing, still include the ingredient with name only.
+Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, dash, piece). Prefer g or lb for meat and other large solids; use piece only for countable foods (onion, chicken piece), never for salt/pepper/spices. Keep vague kitchen wording as pinch/dash (a pinch of salt → amount 1 unit pinch — not tbsp, not piece, not 15 ml). For "to taste" / "season with" / missing amount on a seasoning, omit amount and unit so code can size it from the dish — or give a measured guess that fits THIS recipe size. If a quantity is missing on a bulk food, still include the ingredient with name only.
 Write each ingredient as exactly one singular English grocery food (soy sauce, tofu, green papaya). Never list two foods in one ingredient.
 For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.
 - "out" = side, garnish, dip, "for serving", lemon wedges on the side, bread, packaging, or anything not meant to flavor the cooked dish itself.
 When unsure, use "in".
-For each "in" ingredient, use culinary common sense about how THIS recipe treats it (bloomed in oil, drained, charred, fermented, reduced, crushed, raw, freshly cracked, etc.). Return mix.intensity (1 = the amount already implies the strength, 0 = none of it tastes in the bowl, >1 if concentrated into the dish) and mix.scale per-dimension multipliers only when prep changes that dimension. Deep-fry / frying oil that is drained, pasta water, and blanching water are intensity 0 — they must not fill the served volume. A spoon of stir-fry oil or chili oil that is eaten stays 1. Freshly cracked black pepper is still not chili: scale spicy so the 0.2 leaf becomes ≈ 0.5. Do not output the dish's final 0-10 taste vector.
+For each "in" ingredient, use culinary common sense about how THIS recipe treats it (bloomed in oil, drained, charred, fermented, reduced, crushed, raw, freshly cracked, evaporated, absorbed into rice/grain, etc.). mix.intensity is the fraction of the listed amount that contributes to the final served dish (1 = listed amount is in the product as-is, 0 = none of it remains in what you eat, >1 if concentrated into the dish). Also return mix.scale per-dimension multipliers only when prep changes that dimension. When intensity is not 1 (or role is "out"), also set mix.why to one or two short words (marinade, evaporated, absorbed, drained, concentrated, on the side). Water or stock that cooks into rice/paella/risotto/pasta and evaporates or is absorbed must be intensity 0 for plain water, or a low residual for flavored stock/broth/wine so its taste still contributes — never leave evaporated cooking water at intensity 1 or it will dilute the dish. Deep-fry / frying oil that is drained, pasta water, and blanching water are intensity 0. A spoon of stir-fry oil or chili oil that is eaten stays 1. Soup or stew broth that is served as liquid stays near 1. Freshly cracked black pepper is still not chili: scale spicy so the 0.2 leaf becomes ≈ 0.5. Do not output the dish's final 0-10 taste vector.
 Also list cookingSteps and estimate volume-changing processes (evaporation, absorption, expansion, discard, reduction, etc.) with volumeDeltaMl (negative when volume is lost).
 URL: ${sourceUrl}`;
 }
@@ -193,7 +227,7 @@ JSON {"common": true or false}`;
 }
 
 const LEAF_ANCHORS =
-  "A 10 is the most intense culinary form of that taste: 10 salty = table salt; 10 sweet = sugar; 10 spicy = thai chili or habanero; 10 umami = fish sauce; 10 bitter = unsweetened espresso. Do not hand out 10s because a food is iconic — a spoon of a 10 seasons a whole bowl. Lemon or lime fruit ≈ 9 sour; lemon or lime juice ≈ 9.5 (not 10). Juice, paste, and extract score higher than the whole food (juice ≠ fruit; paste ≠ the vegetable). orange ≈ 7–8 sweet; onion ≈ 0–1 sweet; parmesan ≈ 7–8 salty; soy sauce / fish sauce / oyster sauce / miso ≈ 8.5–10 salty. black pepper ≈ 0.2 spicy (freshly cracked ≈ 0.5). Spicy is chili heat only (capsaicin): ginger, garlic, onion, mustard, horseradish, wasabi, and Sichuan peppercorn are 0 spicy. Black pepper is not chili — 0.2 is the ceiling unless freshly cracked (~0.5). Salty is how salty a mouthful tastes, not milligrams of sodium on a nutrient label. Sodium bicarbonate and other non-salt sodium compounds still show up as 'sodium' in the draft. Functional pantry chemicals (leaveners, thickeners, starches, oils, additives) stay near 0 salty even if the draft is 9–10. Salt, soy, fish sauce, ham, and cheese stay high. Salty and umami are different: a sauce can be both very salty and very umami. Do not lower salty to 'make room' for umami or because the food tastes savory/balanced.";
+  "A 10 is the most intense culinary form of that taste: 10 salty = table salt; 10 sweet = sugar; 10 spicy = thai chili or habanero; 10 umami = fish sauce; 10 bitter = unsweetened espresso. Do not hand out 10s because a food is iconic — a spoon of a 10 seasons a whole bowl. Lemon or lime fruit ≈ 9 sour; lemon or lime juice ≈ 9.5 (not 10). Lactic-fermented vegetables (kimchi, sauerkraut, pickles) are clearly sour ≈ 7–8; yogurt / kefir milder ≈ 4–5; vinegar ≈ 9. Juice, paste, and extract score higher than the whole food (juice ≠ fruit; paste ≠ the vegetable). orange ≈ 7–8 sweet; onion ≈ 0–1 sweet; parmesan ≈ 7–8 salty; soy sauce / fish sauce / oyster sauce / miso ≈ 8.5–10 salty. black pepper ≈ 0.2 spicy (freshly cracked ≈ 0.5). Spicy is chili heat only (capsaicin): ginger, garlic, onion, mustard, horseradish, wasabi, and Sichuan peppercorn are 0 spicy. Black pepper is not chili — 0.2 is the ceiling unless freshly cracked (~0.5). Salty is how salty a mouthful tastes, not milligrams of sodium on a nutrient label. Sodium bicarbonate and other non-salt sodium compounds still show up as 'sodium' in the draft. Functional pantry chemicals (leaveners, thickeners, starches, oils, additives) stay near 0 salty even if the draft is 9–10. Salt, soy, fish sauce, ham, and cheese stay high. Salty and umami are different: a sauce can be both very salty and very umami. Do not lower salty to 'make room' for umami or because the food tastes savory/balanced.";
 
 export function calibrateLeafPrompt(
   name: string,
@@ -331,6 +365,7 @@ const RECIPE_SCHEMA = {
             type: "object",
             properties: {
               intensity: { type: "number" },
+              why: { type: "string" },
               scale: {
                 type: "object",
                 properties: {
@@ -475,21 +510,7 @@ export class GeminiLlm implements LlmClient {
   }
 
   async identifyDish(dish: string, options?: IdentifyDishOptions): Promise<DishOrigin> {
-    const typed = options?.searchMode === "typed";
-    const prompt = typed
-      ? `Identify the culinary origin of "${dish}".
-Return country, culture, nativeName in the origin language (e.g. Mapo tofu → 麻婆豆腐), language, languageCode, and 3 web queries in the SAME language and script the user typed.
-These queries should find the internationalized / diaspora version of the dish as commonly cooked from recipes in that language, not necessarily the most authentic home-country version.
-Each query MUST include the user's dish name plus a recipe word in that language (e.g. recipe, recette, receta).
-Use at least one unquoted query. You may include one quoted exact-name query.
-Do not switch the queries into the origin language unless the user already typed in that language.
-Do not use generic cuisine queries.`
-      : `Identify the culinary origin of "${dish}".
-Return country, culture, nativeName in the origin language (e.g. Mapo tofu → 麻婆豆腐), language, languageCode, and 3 native-language web queries.
-Each query MUST include the native dish name plus a recipe word.
-Use at least one unquoted query so search can match title variants, e.g. 麻婆豆腐 食谱, 麻婆豆腐 做法.
-You may also include one quoted exact-name query.
-Do not use generic cuisine queries (川菜, 家常菜, Chinese food). Goal: authentic home-country recipes.`;
+    const prompt = identifyDishPrompt(dish, options);
     let data = await this.json<Omit<DishOrigin, "dish">>(FAST_MODEL, prompt, ORIGIN_SCHEMA);
     const origin = { dish, ...data };
     if (shouldEscalateOrigin(origin)) {
