@@ -45,7 +45,11 @@ import { tryChemistryLeaf } from "./leaf";
 import { emptyFoodbClient, FoodbDumpClient, type FoodbClient } from "./foodb";
 import { emptyFctClient, FctDumpClient, type FctClient } from "./fct";
 import { emptyDukeClient, DukeDumpClient, type DukeClient } from "./duke";
-import { emptyPhenolClient, PhenolDumpClient, type PhenolClient } from "./phenol";
+import {
+  emptyPhenolClient,
+  PhenolDumpClient,
+  type PhenolClient,
+} from "./phenol";
 import { emptyUmamiClient, UmamiDumpClient, type UmamiClient } from "./umamidb";
 import { emptyUsdaClient, UsdaFdcClient, type UsdaClient } from "./usda";
 import {
@@ -59,17 +63,13 @@ import {
   asFetchedPage,
   pageFetchOk,
   pageTextIsTrusted,
+  pageTitleFromHtml,
   pageUrlIsChallenge,
   recipePageUrl,
 } from "./search";
 import { loadProductionStore } from "./catalog";
 import { IngredientStore } from "./store";
-import {
-  clampTaste,
-  emptyTaste,
-  roundTaste,
-  TASTE_DIMENSIONS,
-} from "./taste";
+import { clampTaste, emptyTaste, roundTaste, TASTE_DIMENSIONS } from "./taste";
 import {
   MAX_RESOLUTION_DEPTH,
   type DishOrigin,
@@ -79,7 +79,11 @@ import {
   type ResolvedIngredient,
   type TasteProfile,
 } from "./types";
-import { applyProcessEffects, estimateFinalVolume, tastingVolumeMl } from "./volume";
+import {
+  applyProcessEffects,
+  estimateFinalVolume,
+  tastingVolumeMl,
+} from "./volume";
 
 export type DishProfileResult = {
   dish: string;
@@ -721,7 +725,8 @@ async function extractOneRecipe(
   if (!pageFetchOk(fetched)) return done(null);
   const challenge = pageUrlIsChallenge(fetched.url);
   pageUrl = recipePageUrl(fetched.url, hit.url);
-  if (!challenge) pageTitle = fetched.pageTitle ?? pageTitleFromHtml(fetched.text);
+  if (!challenge)
+    pageTitle = fetched.pageTitle ?? pageTitleFromHtml(fetched.text);
 
   try {
     if (!challenge && pageTextIsTrusted(fetched.text)) {
@@ -945,7 +950,9 @@ async function resolveFood(
         deps,
         deps.onProgress,
       );
-      const derivedFrom = nested.representative.ingredients.map((item) => item.name);
+      const derivedFrom = nested.representative.ingredients.map(
+        (item) => item.name,
+      );
       if (!nestedRecipePlausible(canonical, derivedFrom)) return null;
       const resolved: ResolvedIngredient = {
         ingredient: canonical,
@@ -992,12 +999,17 @@ async function estimateGroceryLeaf(
   }
 }
 
-function nestedRecipePlausible(ingredient: string, derivedFrom: string[]): boolean {
+function nestedRecipePlausible(
+  ingredient: string,
+  derivedFrom: string[],
+): boolean {
   const query = normalizeIngredientName(ingredient);
   if (!query || !derivedFrom.length) return false;
   const tokens = query.split(" ").filter((token) => token.length >= 3);
   if (!tokens.length) return true;
-  const hay = derivedFrom.map((name) => normalizeIngredientName(name)).join(" ");
+  const hay = derivedFrom
+    .map((name) => normalizeIngredientName(name))
+    .join(" ");
   return tokens.some((token) => hay.includes(token));
 }
 
@@ -1340,7 +1352,10 @@ function scoreContributionsFromParts(
 
   if (!mixable.length || representative.finalVolumeMl <= 0) {
     return finalizeScoreContributions(
-      contributionsFromPureTaste(provenance[0]?.ingredient ?? "ingredient", taste),
+      contributionsFromPureTaste(
+        provenance[0]?.ingredient ?? "ingredient",
+        taste,
+      ),
       taste,
     );
   }
@@ -1378,7 +1393,8 @@ function createLearnedFlush(
 
   const persistOne = async (item: ResolvedIngredient) => {
     if (!persistLearned) return;
-    if (knownAtStart.has(item.ingredient) || flushed.has(item.ingredient)) return;
+    if (knownAtStart.has(item.ingredient) || flushed.has(item.ingredient))
+      return;
     await persistLearned([item]);
     flushed.add(item.ingredient);
   };
