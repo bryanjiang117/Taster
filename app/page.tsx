@@ -4,9 +4,11 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { useDishPlaceholder } from "./use-dish-placeholder";
 import { IngredientList } from "./ingredient-list";
 import { ProgressLog } from "./progress-log";
+import { ScoreList } from "./score-list";
 import { isAbortError } from "@/lib/engine/abort";
+import type { ScoreContributions } from "@/lib/engine/combine";
 import type { FoundIngredient } from "@/lib/engine/found-ingredients";
-import { TASTE_DIMENSIONS, type TasteProfile } from "@/lib/engine/taste";
+import type { TasteProfile } from "@/lib/engine/taste";
 import type { ProgressStepEvent } from "@/lib/engine/progress";
 import { readProgressStream } from "@/lib/ui/progress-stream";
 
@@ -19,6 +21,7 @@ type ApiResult = {
   taste: TasteProfile;
   confidence: number;
   recipesAnalyzed: number;
+  scoreContributions?: ScoreContributions;
   footnote?: string | null;
   timesTasted?: number;
   fromCache?: boolean;
@@ -242,7 +245,7 @@ export default function HomePage() {
     <main>
       {totalTastes != null ? (
         <p className="taste-count" aria-live="polite">
-          <span className="taste-count-label">Total tastings</span>
+          <span className="taste-count-label">Total tastings:</span>
           <b>{totalTastes.toLocaleString("en-US")}</b>
         </p>
       ) : null}
@@ -314,17 +317,10 @@ export default function HomePage() {
               {result.origin.nativeName} · {result.origin.country}
             </span>
           </header>
-          <ol className="scores">
-            {TASTE_DIMENSIONS.map((dim) => (
-              <li key={dim}>
-                <span>{label(dim)}</span>
-                <b>
-                  {formatScore(result.taste[dim])}
-                  <small>/10</small>
-                </b>
-              </li>
-            ))}
-          </ol>
+          <ScoreList
+            taste={result.taste}
+            contributions={result.scoreContributions}
+          />
           <p className="meta">
             Confidence {Math.round(result.confidence * 100)}% ·{" "}
             {result.recipesAnalyzed} recipes
@@ -446,12 +442,4 @@ function finishRunningSteps(steps: ProgressStepEvent[]): ProgressStepEvent[] {
   return steps.map((step) =>
     step.status === "running" ? { ...step, status: "done" as const } : step,
   );
-}
-
-function label(dim: string): string {
-  return dim.charAt(0).toUpperCase() + dim.slice(1);
-}
-
-function formatScore(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }

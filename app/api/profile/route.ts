@@ -9,7 +9,7 @@ import { DuckDuckGoSearch, FetchPageClient, searchWithFallback } from "@/lib/eng
 import { UsdaFdcClient } from "@/lib/engine/usda";
 
 export const dynamic = "force-dynamic";
-/** Pho-scale runs (recipe collect ≤30s + many unknown ingredient LLM lookups) exceed 60s on Vercel. */
+/** Pho-scale runs (recipe collect ≤45s + many unknown ingredient LLM lookups) exceed 60s on Vercel. */
 export const maxDuration = 600;
 
 const KEEPALIVE_MS = 15_000;

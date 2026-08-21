@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { TASTE_DIMENSIONS, type TasteProfile } from "@/lib/engine/taste";
 import type { FoundIngredient } from "@/lib/engine/found-ingredients";
 import { formatIngredientProvenance } from "@/lib/ui/ingredient-provenance";
+import { formatMixInLabel } from "@/lib/ui/mix-in-label";
 
 function coarsePointer(): boolean {
   return window.matchMedia("(pointer: coarse)").matches;
@@ -190,6 +191,7 @@ function IngredientTip({
   }, [anchor, item.name, item.recipes.length]);
 
   const provenance = formatIngredientProvenance(item);
+  const mixIn = formatMixInLabel(item);
 
   return createPortal(
     <div
@@ -207,6 +209,10 @@ function IngredientTip({
           ? `Served on the side in ${item.used} of ${item.total} recipes`
           : `Found in ${item.used} of ${item.total} recipes`}
       </p>
+      {item.volumeMl != null && item.volumeMl > 0 ? (
+        <p>~{formatVolumeMl(item.volumeMl)} avg across recipes</p>
+      ) : null}
+      {mixIn ? <p>{mixIn}</p> : null}
       {item.recipes.length ? (
         <ul className="ing-tip-recipes">
           {item.recipes.map((recipe, index) => (
@@ -244,4 +250,11 @@ function TasteLines({ taste }: { taste: TasteProfile }) {
 
 function formatScore(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function formatVolumeMl(ml: number): string {
+  if (ml >= 100) return `${Math.round(ml)} ml`;
+  if (ml >= 10) return `${Math.round(ml)} ml`;
+  if (ml >= 1) return `${ml.toFixed(1).replace(/\.0$/, "")} ml`;
+  return `${ml.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")} ml`;
 }

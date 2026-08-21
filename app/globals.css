@@ -38,6 +38,7 @@ h1 {
   font-weight: 600;
   letter-spacing: -0.03em;
   margin: 0 0 0.25rem;
+  transform: translateX(-0.08em);
 }
 
 .lede {
@@ -52,8 +53,8 @@ h1 {
 .taste-count {
   display: flex;
   align-items: baseline;
-  gap: 0.65rem;
-  margin: 0 0 1.15rem;
+  gap: 0.5rem;
+  margin: 0 0 2rem;  
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
@@ -289,6 +290,23 @@ input:focus {
   border-bottom: 1px dotted var(--rule);
   padding: 0.45rem 0;
   font-size: 1.15rem;
+}
+
+.score-row {
+  cursor: help;
+  padding: 0.65rem 0.35rem 0.65rem 0.15rem;
+  margin: 0 -0.15rem;
+  outline: none;
+}
+
+.score-dim {
+  text-decoration: underline dotted transparent;
+  text-underline-offset: 0.18em;
+}
+
+.score-row:hover .score-dim,
+.score-row:focus-visible .score-dim {
+  text-decoration-color: var(--muted);
 }
 
 .scores b {
@@ -621,8 +639,39 @@ input:focus {
   font-size: 0.95rem;
 }
 
+.ing-tip strong small {
+  color: var(--muted);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 400;
+  margin-left: 0.15rem;
+}
+
 .ing-tip dl {
   margin: 0 0 0.45rem;
+}
+
+.score-tip-contributors {
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.score-tip-more {
+  display: block;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.score-tip-more:hover,
+.score-tip-more:focus-visible {
+  text-decoration: underline;
+  outline: none;
 }
 
 .ing-tip dl div {
