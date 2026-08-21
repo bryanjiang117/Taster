@@ -1,4 +1,5 @@
 import {
+  acidProcessFood,
   applyCalibration,
   draftTasteFromCompounds,
   hasChemistryEvidence,
@@ -219,6 +220,8 @@ async function finishLeaf(
   }
   const draft = draftTasteFromCompounds(amounts);
   if (!hasChemistryEvidence(draft)) return null;
+  // Fermented/pickled foods need acid chemistry; sodium-only USDA rows are incomplete.
+  if (acidProcessFood(canonical) && !draft.evidence.sour) return null;
   let taste = draft.taste;
   if (deps.calibrateLeaf) {
     const overlay = await deps.calibrateLeaf(

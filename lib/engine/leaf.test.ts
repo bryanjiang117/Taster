@@ -231,6 +231,47 @@ describe("tryChemistryLeaf", () => {
     expect(result).toBeNull();
   });
 
+  it("rejects acid-process foods when labs have sodium but no organic acids", async () => {
+    const kimchi = await tryChemistryLeaf("kimchi", {
+      store: new IngredientStore(),
+      usda: {
+        search: async () => ({ id: "1", name: "Cabbage, kimchi" }),
+        compounds: async () => [
+          { id: "sodium", amount: 498 },
+          { id: "sucrose", amount: 1.06 },
+        ],
+      },
+      foodb: { search: async () => null, compounds: async () => [] },
+    });
+    expect(kimchi).toBeNull();
+
+    const sauerkraut = await tryChemistryLeaf("sauerkraut", {
+      store: new IngredientStore(),
+      usda: {
+        search: async () => ({ id: "2", name: "Sauerkraut, canned" }),
+        compounds: async () => [{ id: "sodium", amount: 661 }],
+      },
+      foodb: { search: async () => null, compounds: async () => [] },
+    });
+    expect(sauerkraut).toBeNull();
+  });
+
+  it("still leaves acid-process foods when organic acids are quantified", async () => {
+    const result = await tryChemistryLeaf("sauerkraut", {
+      store: new IngredientStore(),
+      usda: {
+        search: async () => ({ id: "1", name: "Sauerkraut" }),
+        compounds: async () => [
+          { id: "sodium", amount: 661 },
+          { id: "lactic_acid", amount: 1500 },
+        ],
+      },
+      foodb: { search: async () => null, compounds: async () => [] },
+    });
+    expect(result).not.toBeNull();
+    expect(result?.taste.sour).toBeGreaterThan(2);
+  });
+
   it("lets USDA amounts win over FooDB for the same compound, and keeps FooDB-only acids", async () => {
     const result = await tryChemistryLeaf("tomato", {
       store: new IngredientStore(),

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  acidProcessFood,
   applyCalibration,
   draftTasteFromCompounds,
   mergeCompoundLayers,
@@ -9,6 +10,18 @@ import {
 function amounts(rows: Array<[string, number]>): CompoundAmount[] {
   return rows.map(([id, amount]) => ({ id, amount }));
 }
+
+describe("acidProcessFood", () => {
+  it("flags fermented and pickled grocery names that need acid chemistry", () => {
+    expect(acidProcessFood("kimchi")).toBe(true);
+    expect(acidProcessFood("sauerkraut")).toBe(true);
+    expect(acidProcessFood("pickled cucumber")).toBe(true);
+    expect(acidProcessFood("plain yogurt")).toBe(true);
+    expect(acidProcessFood("rice vinegar")).toBe(true);
+    expect(acidProcessFood("cabbage")).toBe(false);
+    expect(acidProcessFood("soy sauce")).toBe(false);
+  });
+});
 
 describe("compound mixer", () => {
   it("maps table salt sodium to a near-ceiling salty mouthful", () => {

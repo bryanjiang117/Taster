@@ -41,10 +41,12 @@ export type IngredientRole = "in" | "out";
 
 /** Prep-aware mix knobs from the recipe extract. Defaults are identity. */
 export type IngredientMix = {
-  /** 1 = volume share as-is. 0 = none of this ingredient tastes in the bowl. */
+  /** Fraction of listed amount that contributes to the final served dish (1 = as listed). */
   intensity?: number;
   /** Per-dimension multipliers from how it was prepared. */
   scale?: Partial<TasteProfile>;
+  /** 1–2 word reason when intensity ≠ 1 (marinade, evaporated, absorbed, …). */
+  why?: string;
 };
 
 export type IngredientQuantity = {

@@ -41,6 +41,7 @@ type NameAcc = {
   shares: number[];
   intensities: number[];
   scales: Partial<TasteProfile>[];
+  whys: string[];
 };
 
 function medianMix(acc: NameAcc): IngredientMix | undefined {
@@ -56,11 +57,29 @@ function medianMix(acc: NameAcc): IngredientMix | undefined {
     scale[dim] = median(values);
     hasScale = true;
   }
-  if (!hasIntensity && !hasScale) return undefined;
-  return {
-    intensity: hasIntensity ? intensity : undefined,
-    scale: hasScale ? scale : undefined,
-  };
+  const why = modeWhy(acc.whys);
+  if (!hasIntensity && !hasScale && !why) return undefined;
+  const mix: IngredientMix = {};
+  if (hasIntensity) mix.intensity = intensity;
+  if (hasScale) mix.scale = scale;
+  if (why) mix.why = why;
+  return mix;
+}
+
+function modeWhy(values: string[]): string | undefined {
+  if (!values.length) return undefined;
+  const counts = new Map<string, number>();
+  let best = values[0]!;
+  let bestCount = 0;
+  for (const value of values) {
+    const next = (counts.get(value) ?? 0) + 1;
+    counts.set(value, next);
+    if (next > bestCount) {
+      best = value;
+      bestCount = next;
+    }
+  }
+  return best;
 }
 
 export function buildRepresentativeRecipe(
@@ -80,26 +99,29 @@ export function buildRepresentativeRecipe(
       if (seen.has(name)) continue;
       seen.add(name);
       const share = tastingVolumeMl(ingredient) / volume;
-      const list = byName.get(name) ?? { shares: [], intensities: [], scales: [] };
+      const list = byName.get(name) ?? {
+        shares: [],
+        intensities: [],
+        scales: [],
+        whys: [],
+      };
       list.shares.push(share);
       list.intensities.push(ingredient.mix?.intensity ?? 1);
       if (ingredient.mix?.scale) list.scales.push(ingredient.mix.scale);
+      if (ingredient.mix?.why) list.whys.push(ingredient.mix.why);
       byName.set(name, list);
     }
   }
 
-  const maxUsed = Math.max(0, ...[...byName.values()].map((acc) => acc.shares.length));
-  const threshold = [...byName.values()].some((acc) => acc.shares.length / total >= 0.5)
-    ? 0.5
-    : maxUsed / total;
-
   const ingredients: RepresentativeIngredient[] = [];
   for (const [name, acc] of byName) {
     const used = acc.shares.length;
-    if (used / total < threshold) continue;
+    // Mean share over all recipes; missing recipes count as 0 so occurrence dilutes volume.
+    const meanShare =
+      total > 0 ? acc.shares.reduce((sum, share) => sum + share, 0) / total : 0;
     ingredients.push({
       name,
-      volumeMl: median(acc.shares) * targetFinalVolumeMl,
+      volumeMl: meanShare * targetFinalVolumeMl,
       occurrence: { used, total },
       mix: medianMix(acc),
     });

@@ -1,16 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   applyMixGain,
+  alignScoreContributions,
+  attributeRecipeTaste,
   combineRecipeTaste,
   MIX_GAIN,
   MIX_P_NORM,
   relativeLoudness,
   recipeTasteStats,
+  roundScoreContributions,
+  seasoningLoudWeight,
   seasoningPunchWeight,
   SEASONING_LOUD,
   SEASONING_SHARE,
 } from "./combine";
 import { loadSeedStore } from "./seed";
+import { TASTE_DIMENSIONS } from "./taste";
 
 const lime = { sweet: 1, sour: 9, salty: 0, spicy: 0, umami: 0, bitter: 1 };
 const lemonJuice = { sweet: 1, sour: 9.5, salty: 0, spicy: 0, umami: 0, bitter: 0.5 };
@@ -28,22 +33,18 @@ function mixed(score: number, share: number, stats: ReturnType<typeof recipeTast
   const loud = relativeLoudness(score, stats);
   const linear = applyMixGain(share * loud);
   const punch = applyMixGain(loud * share ** (1 / MIX_P_NORM));
-  const weight =
-    loud >= SEASONING_LOUD ? seasoningPunchWeight(share) : seasoningPunchWeight(0);
+  const weight = seasoningPunchWeight(share * seasoningLoudWeight(loud));
   return linear * (1 - weight) + punch * weight;
 }
 
-function mixedSpicy(score: number, share: number): number {
-  return applyMixGain(score * share ** (1 / MIX_P_NORM));
-}
-
 describe("seasoningPunchWeight", () => {
-  it("ramps from linear at trace shares to punch-through at spoon scale", () => {
+  it("ramps from linear at trace shares to punch-through at spoon-in-soup scale", () => {
     expect(seasoningPunchWeight(0)).toBe(0);
-    expect(seasoningPunchWeight(0.005)).toBe(0);
-    expect(seasoningPunchWeight(0.01)).toBeLessThan(0.15);
+    expect(seasoningPunchWeight(0.003)).toBe(0);
+    expect(seasoningPunchWeight(0.008)).toBeGreaterThan(0);
+    expect(seasoningPunchWeight(0.008)).toBeLessThan(0.5);
     expect(seasoningPunchWeight(SEASONING_SHARE)).toBeGreaterThan(0.85);
-    expect(seasoningPunchWeight(0.03)).toBe(1);
+    expect(seasoningPunchWeight(0.02)).toBe(1);
     expect(seasoningPunchWeight(0.05)).toBe(1);
   });
 
@@ -68,21 +69,46 @@ describe("seasoningPunchWeight", () => {
   });
 });
 
+describe("seasoningLoudWeight", () => {
+  it("ramps smoothly instead of a hard ≥7 cliff", () => {
+    expect(seasoningLoudWeight(0)).toBe(0);
+    expect(seasoningLoudWeight(3)).toBe(0);
+    expect(seasoningLoudWeight(5.5)).toBeGreaterThan(0.3);
+    expect(seasoningLoudWeight(5.5)).toBeLessThan(0.7);
+    expect(seasoningLoudWeight(SEASONING_LOUD)).toBe(1);
+    expect(seasoningLoudWeight(10)).toBe(1);
+  });
+});
+
 describe("relativeLoudness", () => {
   it("keeps peer scores linear when nothing dominates the recipe", () => {
     const stats = recipeTasteStats([
       { volumeMl: 50, taste: { sweet: 3, sour: 0, salty: 0, spicy: 0, umami: 0, bitter: 0 } },
       { volumeMl: 50, taste: { sweet: 0, sour: 0, salty: 3, spicy: 0, umami: 0, bitter: 0 } },
     ]);
-    expect(relativeLoudness(3, stats)).toBe(3);
+    expect(relativeLoudness(3, stats)).toBeCloseTo(3, 5);
   });
 
-  it("quiets a 3 when the recipe also has a 10, but less harshly than score²/peak", () => {
+  it("quiets a 3 when the recipe also has a 10, but milder than √(score/peak)", () => {
     const stats = recipeTasteStats([
       { volumeMl: 50, taste: { sweet: 3, sour: 0, salty: 0, spicy: 0, umami: 0, bitter: 0 } },
       { volumeMl: 50, taste: { sweet: 0, sour: 0, salty: 10, spicy: 0, umami: 0, bitter: 0 } },
     ]);
-    expect(relativeLoudness(3, stats)).toBeCloseTo(3 * Math.sqrt(0.3), 5);
+    const quieted = relativeLoudness(3, stats);
+    expect(quieted).toBeGreaterThan(3 * Math.sqrt(0.3));
+    expect(quieted).toBeLessThan(3);
+    expect(relativeLoudness(10, stats)).toBe(10);
+  });
+
+  it("blends toward full score without a cliff at 85% of peak", () => {
+    // High avg so toAvg does not dominate; cliff is vs peak only.
+    const stats = { peak: 10, avg: 20 };
+    const below = relativeLoudness(8.4, stats);
+    const above = relativeLoudness(8.6, stats);
+    expect(above - below).toBeLessThan(0.25);
+    expect(below).toBeGreaterThan(8);
+    expect(below).toBeLessThan(8.4);
+    expect(above).toBeLessThan(8.6);
     expect(relativeLoudness(10, stats)).toBe(10);
   });
 });
@@ -171,7 +197,8 @@ describe("combineRecipeTaste", () => {
       ],
       BOWL,
     );
-    expect(taste.sweet).toBeLessThan(0.6);
+    expect(taste.sweet).toBeLessThanOrEqual(1.2);
+    expect(taste.salty).toBeGreaterThan(taste.sweet * 3);
   });
 
   it("keeps trace sugar quiet in a large savory dish", () => {
@@ -187,10 +214,31 @@ describe("combineRecipeTaste", () => {
       ],
       847,
     );
-    expect(taste.sweet).toBeLessThan(1.5);
+    expect(taste.sweet).toBeLessThan(3);
   });
 
-  it("keeps mapo-like chili bean paste spicy even next to salt and sugar 10s", () => {
+  it("lets sugar and oyster sauce register sweet in a soup-scale bowl", () => {
+    const sugar = { sweet: 10, sour: 0, salty: 0, spicy: 0, umami: 0, bitter: 0 };
+    const oyster = { sweet: 3, sour: 0.5, salty: 8, spicy: 0, umami: 7, bitter: 0.5 };
+    const broth = { sweet: 0.5, sour: 0.2, salty: 3, spicy: 0.5, umami: 4, bitter: 0.2 };
+    const taste = combineRecipeTaste(
+      [
+        { volumeMl: 500, taste: broth, role: "in" },
+        { volumeMl: 200, taste: rice, role: "in" },
+        { volumeMl: 120, taste: { ...rice, sweet: 1.5, umami: 0.5 }, role: "in" },
+        { volumeMl: 80, taste: { ...rice, umami: 5, salty: 1 }, role: "in" },
+        { volumeMl: 20, taste: { ...fish, salty: 9, umami: 8 }, role: "in" },
+        { volumeMl: 12, taste: oyster, role: "in" },
+        { volumeMl: 8, taste: sugar, role: "in" },
+        { volumeMl: 12, taste: { ...rice, spicy: 8, sweet: 1 }, role: "in" },
+      ],
+      952,
+    );
+    expect(taste.sweet).toBeGreaterThanOrEqual(1.2);
+    expect(taste.sweet).toBeLessThan(4);
+  });
+
+  it("mixes chili heat like other dimensions when salt and sugar peak the recipe", () => {
     const taste = combineRecipeTaste(
       [
         { volumeMl: 400, taste: { ...rice, sweet: 0.5, umami: 0.8 }, role: "in" },
@@ -207,8 +255,12 @@ describe("combineRecipeTaste", () => {
       ],
       850,
     );
-    expect(taste.spicy).toBeGreaterThanOrEqual(4);
-    expect(taste.sweet).toBeLessThan(1.5);
+    // Mid spicy notes quiet vs sugar/salt peaks, but still partial punch (no ≥7 cliff).
+    expect(taste.spicy).toBeLessThan(5);
+    expect(taste.spicy).toBeGreaterThan(1);
+    // Spoon of sugar in the bowl should read as real sweet, not a trace.
+    expect(taste.sweet).toBeGreaterThanOrEqual(1.5);
+    expect(taste.sweet).toBeLessThan(5);
   });
 
   it("boosts a raw ~5 mix to ~8 on the dish", () => {
@@ -275,14 +327,13 @@ describe("combineRecipeTaste", () => {
   });
 
   it("keeps a spoon of black pepper near zero in the bowl", () => {
-    const taste = combineRecipeTaste(
-      [
-        { volumeMl: SPOON, taste: blackPepper, role: "in" },
-        { volumeMl: BOWL - SPOON, taste: rice, role: "in" },
-      ],
-      BOWL,
-    );
-    expect(taste.spicy).toBeCloseTo(mixedSpicy(0.2, SHARE), 5);
+    const ingredients = [
+      { volumeMl: SPOON, taste: blackPepper, role: "in" as const },
+      { volumeMl: BOWL - SPOON, taste: rice, role: "in" as const },
+    ];
+    const stats = recipeTasteStats(ingredients);
+    const taste = combineRecipeTaste(ingredients, BOWL);
+    expect(taste.spicy).toBeCloseTo(mixed(0.2, SHARE, stats), 5);
     expect(taste.spicy).toBeLessThan(0.2);
   });
 
@@ -312,5 +363,127 @@ describe("combineRecipeTaste", () => {
     );
     expect(taste.spicy).toBeLessThanOrEqual(10);
     expect(taste.spicy).toBe(10);
+  });
+});
+
+describe("attributeRecipeTaste", () => {
+  it("returns the same taste as combineRecipeTaste", () => {
+    const ingredients = [
+      { name: "salt", volumeMl: 10, taste: salt, role: "in" as const },
+      { name: "rice", volumeMl: 490, taste: rice, role: "in" as const },
+    ];
+    const attributed = attributeRecipeTaste(ingredients, 500);
+    expect(attributed.taste).toEqual(combineRecipeTaste(ingredients, 500));
+  });
+
+  it("attributes salty mostly to salt and sums to the dish score", () => {
+    const { taste, contributions } = attributeRecipeTaste(
+      [
+        { name: "salt", volumeMl: 10, taste: salt, role: "in" },
+        { name: "rice", volumeMl: 490, taste: rice, role: "in" },
+      ],
+      500,
+    );
+    expect(contributions.salty[0]?.name).toBe("salt");
+    expect(contributions.salty[0]!.points).toBeGreaterThan(
+      contributions.salty[1]?.points ?? 0,
+    );
+    const sum = contributions.salty.reduce((total, row) => total + row.points, 0);
+    expect(sum).toBeCloseTo(taste.salty, 5);
+  });
+
+  it("keeps every positive contributor after finalize", () => {
+    const ingredients = Array.from({ length: 8 }, (_, index) => ({
+      name: `salt-${index}`,
+      volumeMl: 2,
+      taste: salt,
+      role: "in" as const,
+    }));
+    ingredients.push({
+      name: "rice",
+      volumeMl: 484,
+      taste: rice,
+      role: "in",
+    });
+    const { taste, contributions } = attributeRecipeTaste(ingredients, 500);
+    expect(contributions.salty.length).toBeGreaterThan(5);
+    const shown = roundScoreContributions(
+      alignScoreContributions(contributions, taste),
+    );
+    expect(shown.salty.length).toBe(contributions.salty.length);
+    expect(shown.salty.every((row) => row.points > 0)).toBe(true);
+  });
+
+  it("keeps tiny sweet contributors visible when the dish score is only 0.2", () => {
+    const aligned = alignScoreContributions(
+      {
+        sweet: [
+          { name: "sugar", points: 0.08 },
+          { name: "oyster sauce", points: 0.05 },
+          { name: "broth", points: 0.04 },
+          { name: "cabbage", points: 0.03 },
+        ],
+        sour: [],
+        salty: [],
+        spicy: [],
+        umami: [],
+        bitter: [],
+      },
+      {
+        sweet: 0.2,
+        sour: 0,
+        salty: 0,
+        spicy: 0,
+        umami: 0,
+        bitter: 0,
+      },
+    );
+    const shown = roundScoreContributions(aligned);
+    expect(shown.sweet.map((row) => row.name)).toEqual([
+      "sugar",
+      "oyster sauce",
+      "broth",
+      "cabbage",
+    ]);
+    expect(shown.sweet.every((row) => row.points > 0)).toBe(true);
+    const sum = shown.sweet.reduce((total, row) => total + row.points, 0);
+    expect(sum).toBeCloseTo(0.2, 1);
+  });
+
+  it("drops intensity-0 baths and out-of-dish sides", () => {
+    const { contributions } = attributeRecipeTaste(
+      [
+        {
+          name: "frying oil",
+          volumeMl: 200,
+          taste: { sweet: 0, sour: 0, salty: 0, spicy: 0, umami: 0, bitter: 0 },
+          role: "in",
+          mix: { intensity: 0 },
+        },
+        {
+          name: "chili oil dip",
+          volumeMl: 30,
+          taste: thaiChili,
+          role: "out",
+        },
+        { name: "salt", volumeMl: 10, taste: salt, role: "in" },
+        { name: "rice", volumeMl: 490, taste: rice, role: "in" },
+      ],
+      500,
+    );
+    expect(contributions.salty.map((row) => row.name)).toEqual(["salt"]);
+    expect(contributions.spicy).toEqual([]);
+  });
+
+  it("leaves empty lists when a dimension scores zero", () => {
+    const { taste, contributions } = attributeRecipeTaste(
+      [{ name: "rice", volumeMl: 100, taste: rice, role: "in" }],
+      100,
+    );
+    expect(taste.spicy).toBe(0);
+    expect(contributions.spicy).toEqual([]);
+    for (const dim of TASTE_DIMENSIONS) {
+      if (taste[dim] <= 0) expect(contributions[dim]).toEqual([]);
+    }
   });
 });

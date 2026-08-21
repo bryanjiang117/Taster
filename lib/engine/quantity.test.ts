@@ -25,6 +25,84 @@ describe("quantity conversion", () => {
   });
 });
 
+describe("dish-aware vague amounts", () => {
+  it("keeps a pinch of salt tiny, never a 15 ml piece default", () => {
+    const recipe = recipeFromExtractJson(
+      {
+        ingredients: [
+          { name: "chicken", amount: 500, unit: "g" },
+          { name: "water", amount: 500, unit: "ml" },
+          { name: "salt", amount: 1, unit: "pinch" },
+        ],
+      },
+      "https://example.com/soup",
+    );
+    const salt = recipe?.ingredients.find((i) => i.name === "salt");
+    expect(salt?.volumeMl).toBeLessThan(2);
+    expect(salt?.volumeMl).toBeGreaterThan(0.1);
+  });
+
+  it("does not treat missing salt quantity as 1 piece (15 ml)", () => {
+    const recipe = recipeFromExtractJson(
+      {
+        ingredients: [
+          { name: "potato", amount: 400, unit: "g" },
+          { name: "butter", amount: 30, unit: "g" },
+          { name: "salt" },
+        ],
+      },
+      "https://example.com/mash",
+    );
+    const salt = recipe?.ingredients.find((i) => i.name === "salt");
+    expect(salt?.volumeMl).toBeLessThan(8);
+    expect(salt?.volumeMl).toBeGreaterThan(0.2);
+  });
+
+  it("rejects piece on seasoning names (LLM stand-in for pinch/to taste)", () => {
+    const recipe = recipeFromExtractJson(
+      {
+        ingredients: [
+          { name: "beef", amount: 300, unit: "g" },
+          { name: "salt", amount: 1, unit: "piece" },
+          { name: "black pepper", amount: 1, unit: "piece" },
+        ],
+      },
+      "https://example.com/steak",
+    );
+    const salt = recipe?.ingredients.find((i) => i.name === "salt");
+    const pepper = recipe?.ingredients.find((i) => i.name === "black pepper");
+    expect(salt?.volumeMl).toBeLessThan(3);
+    expect(pepper?.volumeMl).toBeLessThan(2);
+  });
+
+  it("scales a pinch up for a large pot and down for a small dish", () => {
+    const large = recipeFromExtractJson(
+      {
+        ingredients: [
+          { name: "water", amount: 2000, unit: "ml" },
+          { name: "chicken", amount: 800, unit: "g" },
+          { name: "salt", amount: 1, unit: "pinch" },
+        ],
+      },
+      "https://example.com/big-soup",
+    );
+    const small = recipeFromExtractJson(
+      {
+        ingredients: [
+          { name: "egg", amount: 1, unit: "piece" },
+          { name: "salt", amount: 1, unit: "pinch" },
+        ],
+      },
+      "https://example.com/egg",
+    );
+    const largeSalt = large?.ingredients.find((i) => i.name === "salt")?.volumeMl ?? 0;
+    const smallSalt = small?.ingredients.find((i) => i.name === "salt")?.volumeMl ?? 0;
+    expect(largeSalt).toBeGreaterThan(smallSalt);
+    expect(largeSalt).toBeLessThan(3);
+    expect(smallSalt).toBeGreaterThan(0.05);
+  });
+});
+
 describe("jerk-like volume shares", () => {
   it("does not let a spoon of sugar dominate chicken pieces", () => {
     const recipes = [

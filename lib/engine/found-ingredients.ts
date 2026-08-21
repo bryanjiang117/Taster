@@ -13,6 +13,12 @@ export type FoundIngredient = {
   name: string;
   used: number;
   total: number;
+  /** Median listed volume across recipes that include this ingredient (ml). */
+  volumeMl?: number;
+  /** Median mix.intensity when not full contribution (1). */
+  mixIntensity?: number;
+  /** Modal mix.why across recipes (1–2 words). */
+  mixWhy?: string;
   pending: boolean;
   flavors: string[];
   /** True when every recipe appearance is a side/serving item (role `out`). */
@@ -45,6 +51,8 @@ export function foundIngredientsFromRecipes(
   const used = new Map<string, number>();
   const inUsed = new Map<string, number>();
   const volumes = new Map<string, number[]>();
+  const intensities = new Map<string, number[]>();
+  const whys = new Map<string, string[]>();
   const firstSeen = new Map<string, number>();
   const sources = new Map<string, FoundRecipeLink[]>();
   let nextOrder = 0;
@@ -62,6 +70,15 @@ export function foundIngredientsFromRecipes(
       const list = volumes.get(name) ?? [];
       list.push(ingredient.volumeMl);
       volumes.set(name, list);
+      const intensityList = intensities.get(name) ?? [];
+      intensityList.push(ingredient.mix?.intensity ?? 1);
+      intensities.set(name, intensityList);
+      const why = ingredient.mix?.why?.trim();
+      if (why) {
+        const whyList = whys.get(name) ?? [];
+        whyList.push(why);
+        whys.set(name, whyList);
+      }
       if (link) {
         const links = sources.get(name) ?? [];
         links.push(link);
@@ -80,10 +97,16 @@ export function foundIngredientsFromRecipes(
   const items: FoundIngredient[] = [];
   for (const [name, count] of used) {
     const cached = store.get(name);
+    const volumeMl = median(volumes.get(name) ?? []);
+    const mixIntensity = median(intensities.get(name) ?? []);
+    const mixWhy = mode(whys.get(name) ?? []);
     items.push({
       name,
       used: count,
       total,
+      volumeMl: volumeMl > 0 ? volumeMl : undefined,
+      mixIntensity: mixIntensity !== 1 ? mixIntensity : undefined,
+      mixWhy,
       pending: !cached,
       flavors: cached ? flavorsFromTaste(cached.taste) : [],
       out: (inUsed.get(name) ?? 0) === 0,
@@ -130,6 +153,23 @@ function median(values: number[]): number {
   const mid = Math.floor(sorted.length / 2);
   if (sorted.length % 2 === 0) return (sorted[mid - 1]! + sorted[mid]!) / 2;
   return sorted[mid]!;
+}
+
+/** First-seen wins ties so modal why is stable across runs. */
+function mode(values: string[]): string | undefined {
+  if (!values.length) return undefined;
+  const counts = new Map<string, number>();
+  let best = values[0]!;
+  let bestCount = 0;
+  for (const value of values) {
+    const next = (counts.get(value) ?? 0) + 1;
+    counts.set(value, next);
+    if (next > bestCount) {
+      best = value;
+      bestCount = next;
+    }
+  }
+  return best;
 }
 
 function recipeLink(recipe: Recipe, index: number): FoundRecipeLink | null {

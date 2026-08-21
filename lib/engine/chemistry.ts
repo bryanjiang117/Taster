@@ -180,6 +180,17 @@ export function chiliHeatFood(name: string): boolean {
   );
 }
 
+/**
+ * Foods whose sourness is defined by fermentation/pickling acids.
+ * Nutrient tables often list only sodium/sugars for these — that is not a complete leaf.
+ */
+export function acidProcessFood(name: string): boolean {
+  const n = name.trim().toLowerCase();
+  return /\b(kimchi|sauerkraut|pickle|pickled|ferment|yogurt|yoghurt|kefir|skyr|buttermilk|sour\s*cream|vinegar|kvass|curtido|tsukemono|giardiniera|relish)\b/.test(
+    n,
+  );
+}
+
 export function applyCalibration(
   draft: ChemistryDraft,
   overlay: Partial<TasteProfile> | undefined,

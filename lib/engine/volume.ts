@@ -6,7 +6,7 @@ export type VolumeResult = {
   solubleRetention: number;
 };
 
-/** Volume that remains in the tasting. Intensity 0 (drained fry oil, pasta water) is 0. */
+/** Volume that remains in the tasting. Intensity 0 (drained oil, evaporated water) is 0. */
 export function tastingVolumeMl(item: {
   volumeMl: number;
   role?: IngredientQuantity["role"];

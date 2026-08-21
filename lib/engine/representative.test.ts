@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildRepresentativeRecipe } from "./representative";
 
 describe("representative recipe", () => {
-  it("keeps ingredients used in at least half of recipes", () => {
+  it("includes rare ingredients with occurrence-diluted volume", () => {
     const recipes = [
       {
         ingredients: [
@@ -33,10 +33,14 @@ describe("representative recipe", () => {
     expect(names).toContain("lime");
     expect(names).toContain("fish sauce");
     expect(names).toContain("chili");
-    expect(names).not.toContain("cilantro");
+    expect(names).toContain("cilantro");
+    const cilantro = representative.ingredients.find((i) => i.name === "cilantro");
+    // present share 15/60 in one of three recipes → mean 0.25/3
+    expect(cilantro?.volumeMl).toBeCloseTo((15 / 60 / 3) * 100);
+    expect(cilantro?.occurrence).toEqual({ used: 1, total: 3 });
   });
 
-  it("uses median volume-per-final-volume scaled to a common basis", () => {
+  it("uses mean share including absences as zero", () => {
     const recipes = [
       { ingredients: [{ name: "salt", volumeMl: 10 }], finalVolumeMl: 100 },
       { ingredients: [{ name: "salt", volumeMl: 20 }], finalVolumeMl: 200 },
@@ -44,7 +48,46 @@ describe("representative recipe", () => {
     ];
 
     const representative = buildRepresentativeRecipe(recipes, 200);
+    // each recipe share is 0.1 → mean 0.1 × 200
     expect(representative.ingredients[0].volumeMl).toBeCloseTo(20);
+  });
+
+  it("weights mutual substitutes so their volumes sum like one sauce slot", () => {
+    const recipes = [
+      {
+        ingredients: [
+          { name: "chicken", volumeMl: 450 },
+          { name: "soy sauce", volumeMl: 50 },
+        ],
+        finalVolumeMl: 500,
+      },
+      {
+        ingredients: [
+          { name: "chicken", volumeMl: 450 },
+          { name: "fish sauce", volumeMl: 50 },
+        ],
+        finalVolumeMl: 500,
+      },
+      {
+        ingredients: [
+          { name: "chicken", volumeMl: 450 },
+          { name: "oyster sauce", volumeMl: 50 },
+        ],
+        finalVolumeMl: 500,
+      },
+    ];
+    const representative = buildRepresentativeRecipe(recipes, 500);
+    const soy = representative.ingredients.find((i) => i.name === "soy sauce");
+    const fish = representative.ingredients.find((i) => i.name === "fish sauce");
+    const oyster = representative.ingredients.find((i) => i.name === "oyster sauce");
+    const chicken = representative.ingredients.find((i) => i.name === "chicken");
+    expect(soy?.volumeMl).toBeCloseTo(50 / 3);
+    expect(fish?.volumeMl).toBeCloseTo(50 / 3);
+    expect(oyster?.volumeMl).toBeCloseTo(50 / 3);
+    expect((soy?.volumeMl ?? 0) + (fish?.volumeMl ?? 0) + (oyster?.volumeMl ?? 0)).toBeCloseTo(
+      50,
+    );
+    expect(chicken?.volumeMl).toBeCloseTo(450);
   });
 
   it("records occurrence counts for provenance", () => {
@@ -124,8 +167,8 @@ describe("representative recipe", () => {
     const representative = buildRepresentativeRecipe(recipes, 400);
     const lemon = representative.ingredients.find((i) => i.name === "lemon");
     expect(lemon?.occurrence).toEqual({ used: 2, total: 3 });
-    // median of in-only shares: 40/400 and 80/400 → 0.15 → 60ml at target 400
-    expect(lemon?.volumeMl).toBeCloseTo(60);
+    // mean of {0, 40/400, 80/400} → 0.1 → 40ml at target 400
+    expect(lemon?.volumeMl).toBeCloseTo(40);
   });
 
   it("keeps median prep intensity so discarded frying oil does not fill the bowl", () => {

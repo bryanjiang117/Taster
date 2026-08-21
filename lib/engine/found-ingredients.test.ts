@@ -36,6 +36,7 @@ describe("foundIngredientsFromRecipes", () => {
     const soy = found.find((item) => item.name === "soy sauce");
     expect(soy?.used).toBe(2);
     expect(soy?.total).toBe(2);
+    expect(soy?.volumeMl).toBe(17.5);
     expect(soy?.pending).toBe(false);
     expect(soy?.taste?.salty).toBe(9);
     expect(soy?.flavors).toEqual(["salty", "umami"]);
@@ -153,6 +154,58 @@ describe("foundIngredientsFromRecipes", () => {
       store,
     );
     expect(found[0]?.flavors).toEqual(["salty", "umami"]);
+  });
+
+  it("aggregates median mix intensity and modal why across recipes", () => {
+    const found = foundIngredientsFromRecipes(
+      [
+        {
+          ingredients: [
+            {
+              name: "allspice",
+              volumeMl: 5,
+              role: "in",
+              mix: { intensity: 0.4, why: "marinade" },
+            },
+            { name: "chicken", volumeMl: 800, role: "in" },
+          ],
+        },
+        {
+          ingredients: [
+            {
+              name: "allspice",
+              volumeMl: 5,
+              role: "in",
+              mix: { intensity: 0.6, why: "marinade" },
+            },
+            {
+              name: "oil",
+              volumeMl: 200,
+              role: "in",
+              mix: { intensity: 0, why: "cooking liquid" },
+            },
+          ],
+        },
+        {
+          ingredients: [
+            {
+              name: "allspice",
+              volumeMl: 5,
+              role: "in",
+              mix: { intensity: 0.5, why: "rub" },
+            },
+          ],
+        },
+      ],
+      new IngredientStore([]),
+    );
+
+    const allspice = found.find((item) => item.name === "allspice");
+    expect(allspice?.mixIntensity).toBe(0.5);
+    expect(allspice?.mixWhy).toBe("marinade");
+    expect(found.find((item) => item.name === "chicken")?.mixIntensity).toBeUndefined();
+    expect(found.find((item) => item.name === "oil")?.mixIntensity).toBe(0);
+    expect(found.find((item) => item.name === "oil")?.mixWhy).toBe("cooking liquid");
   });
 
   it("builds a short footnote with primary flavors for out-only ingredients", () => {
