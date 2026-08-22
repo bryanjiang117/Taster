@@ -271,7 +271,7 @@ export default function HomePage() {
         </div>
         <fieldset className="modes">
           <ModeToggle
-            label="Reuse cache"
+            label="Use dish cache"
             hint="Use the shared average if this dish was tasted before"
             on={useCache}
             onChange={(value) => {
@@ -322,14 +322,22 @@ export default function HomePage() {
             taste={result.taste}
             contributions={result.scoreContributions}
           />
-          <p className="meta">
-            Confidence {Math.round(result.confidence * 100)}% ·{" "}
-            {result.recipesAnalyzed} recipes
-            {result.timesTasted
-              ? ` · Tasted ${result.timesTasted} time${result.timesTasted === 1 ? "" : "s"}`
-              : ""}
-            {result.fromCache ? " · cached average" : ""}
-          </p>
+          <div className="meta">
+            {result.timesTasted === 1 ? (
+              <p>Congrats! You were the first one to taste this dish!</p>
+            ) : result.timesTasted ? (
+              <p>
+                Tasted {result.timesTasted} times
+                {result.fromCache ? " · cached average" : ""}
+              </p>
+            ) : result.fromCache ? (
+              <p>cached average</p>
+            ) : null}
+            <p>
+              Confidence {Math.round(result.confidence * 100)}% ·{" "}
+              {result.recipesAnalyzed} recipes
+            </p>
+          </div>
           <AccompanimentFootnote
             items={ingredients}
             fallback={result.footnote}
