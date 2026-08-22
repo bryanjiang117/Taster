@@ -6,6 +6,9 @@ import {
   combineRecipeTaste,
   MIX_GAIN,
   MIX_P_NORM,
+  punchIntensityWeight,
+  PUNCH_INTENSITY_HIGH,
+  PUNCH_INTENSITY_LOW,
   relativeLoudness,
   recipeTasteStats,
   roundScoreContributions,
@@ -29,12 +32,19 @@ const SPOON = 15;
 const BOWL = 500;
 const SHARE = SPOON / BOWL;
 
+function ingredientBlend(loud: number, share: number): number {
+  if (share <= 0 || loud <= 0) return 0;
+  const linear = share * loud;
+  const punch = loud * share ** (1 / MIX_P_NORM);
+  const weight =
+    seasoningPunchWeight(share * seasoningLoudWeight(loud)) *
+    punchIntensityWeight(loud);
+  return linear * (1 - weight) + punch * weight;
+}
+
 function mixed(score: number, share: number, stats: ReturnType<typeof recipeTasteStats>): number {
   const loud = relativeLoudness(score, stats);
-  const linear = applyMixGain(share * loud);
-  const punch = applyMixGain(loud * share ** (1 / MIX_P_NORM));
-  const weight = seasoningPunchWeight(share * seasoningLoudWeight(loud));
-  return linear * (1 - weight) + punch * weight;
+  return applyMixGain(ingredientBlend(loud, share));
 }
 
 describe("seasoningPunchWeight", () => {
@@ -91,6 +101,18 @@ describe("seasoningLoudWeight", () => {
     expect(seasoningLoudWeight(5.5)).toBeLessThan(0.7);
     expect(seasoningLoudWeight(SEASONING_LOUD)).toBe(1);
     expect(seasoningLoudWeight(10)).toBe(1);
+  });
+});
+
+describe("punchIntensityWeight", () => {
+  it("keeps mid notes partial and peak notes full", () => {
+    expect(PUNCH_INTENSITY_LOW).toBe(5.25);
+    expect(PUNCH_INTENSITY_HIGH).toBe(10);
+    expect(punchIntensityWeight(0)).toBe(0);
+    expect(punchIntensityWeight(5)).toBe(0);
+    expect(punchIntensityWeight(7)).toBeGreaterThan(0.15);
+    expect(punchIntensityWeight(7)).toBeLessThan(0.45);
+    expect(punchIntensityWeight(10)).toBe(1);
   });
 });
 
@@ -228,7 +250,7 @@ describe("combineRecipeTaste", () => {
       ],
       847,
     );
-    expect(taste.sweet).toBeLessThan(3);
+    expect(taste.sweet).toBeLessThan(4);
   });
 
   it("lets sugar and oyster sauce register sweet in a soup-scale bowl", () => {
@@ -269,9 +291,9 @@ describe("combineRecipeTaste", () => {
       ],
       850,
     );
-    // Mid spicy notes quiet vs sugar/salt peaks, but still partial punch (no ≥7 cliff).
+    // Mid spicy notes quiet vs sugar/salt peaks; intensity gate keeps ~5.5 from full punch.
     expect(taste.spicy).toBeLessThan(5.5);
-    expect(taste.spicy).toBeGreaterThan(1);
+    expect(taste.spicy).toBeGreaterThan(0.3);
     // Spoon of sugar in the bowl should read as real sweet, not a trace.
     expect(taste.sweet).toBeGreaterThanOrEqual(1.5);
     expect(taste.sweet).toBeLessThan(5);
@@ -351,23 +373,56 @@ describe("combineRecipeTaste", () => {
     expect(taste.spicy).toBeLessThan(0.2);
   });
 
-  it("adds two seasonings in p-space like one with their combined share", () => {
-    const split = combineRecipeTaste(
+  it("punches each ingredient from its own bowl share (crowding ignored)", () => {
+    const ketchup = {
+      sweet: 7,
+      sour: 3,
+      salty: 3,
+      spicy: 0,
+      umami: 1.5,
+      bitter: 0,
+    };
+    const worcestershire = {
+      sweet: 2,
+      sour: 3,
+      salty: 5,
+      spicy: 0,
+      umami: 6.5,
+      bitter: 0,
+    };
+    const beef = {
+      sweet: 0.3,
+      sour: 0,
+      salty: 2,
+      spicy: 0,
+      umami: 4,
+      bitter: 0,
+    };
+    const { taste, contributions } = attributeRecipeTaste(
       [
-        { volumeMl: SPOON / 2, taste: salt, role: "in" },
-        { volumeMl: SPOON / 2, taste: salt, role: "in" },
-        { volumeMl: BOWL - SPOON, taste: rice, role: "in" },
+        { name: "beef", volumeMl: 350, taste: beef, role: "in" },
+        { name: "ketchup", volumeMl: SPOON, taste: ketchup, role: "in" },
+        {
+          name: "worcestershire sauce",
+          volumeMl: SPOON,
+          taste: worcestershire,
+          role: "in",
+        },
       ],
-      BOWL,
+      450,
     );
-    const together = combineRecipeTaste(
-      [
-        { volumeMl: SPOON, taste: salt, role: "in" },
-        { volumeMl: BOWL - SPOON, taste: rice, role: "in" },
-      ],
-      BOWL,
-    );
-    expect(split.salty).toBeCloseTo(together.salty, 5);
+    const ketchupSweet =
+      contributions.sweet.find((row) => row.name === "ketchup")?.points ?? 0;
+    const worcUmami =
+      contributions.umami.find((row) => row.name === "worcestershire sauce")
+        ?.points ?? 0;
+    // Mid-loud spoon (~7) lands ~2 sweet, not leaf-like ~6 from joint p-norm collapse.
+    expect(ketchupSweet).toBeGreaterThan(1.5);
+    expect(ketchupSweet).toBeLessThan(3.5);
+    expect(taste.sweet).toBeLessThan(4);
+    // Same spoon share punches umami without beef stealing the seasoning term.
+    expect(worcUmami).toBeGreaterThan(1);
+    expect(worcUmami).toBeLessThan(ketchupSweet + 0.5);
   });
 
   it("still caps spicy at the hottest in-ingredient when shares exceed 1", () => {

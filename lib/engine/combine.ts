@@ -107,6 +107,9 @@ export const SEASONING_SHARE = 0.015;
 /** Smoothstep ends: full punch by ~SEASONING_SHARE × 1.12, linear below ~×0.32. */
 const PUNCH_SHARE_LOW = SEASONING_SHARE * 0.32;
 const PUNCH_SHARE_HIGH = SEASONING_SHARE * 1.12;
+/** Mid notes only partially punch; peak culinary forms (≈10) get full intensity. */
+export const PUNCH_INTENSITY_LOW = 5.25;
+export const PUNCH_INTENSITY_HIGH = 10;
 
 /** 0→1 how much this loudness counts as "seasoning" for punch share. */
 export function seasoningLoudWeight(loud: number): number {
@@ -116,6 +119,11 @@ export function seasoningLoudWeight(loud: number): number {
 /** Smooth 0→1 weight: traces stay linear, spoon-scale seasonings punch through. */
 export function seasoningPunchWeight(seasoningShare: number): number {
   return smoothunit(seasoningShare, PUNCH_SHARE_LOW, PUNCH_SHARE_HIGH);
+}
+
+/** 0→1 how hard this loudness may punch (independent of dimension crowding). */
+export function punchIntensityWeight(loud: number): number {
+  return smoothunit(loud, PUNCH_INTENSITY_LOW, PUNCH_INTENSITY_HIGH);
 }
 
 export function applyMixGain(score: number): number {
@@ -149,55 +157,33 @@ function scaleContributionParts(
   return parts.map((row) => ({ ...row, points: row.points * factor }));
 }
 
-function pNormDimensionAttributed(
+function dimensionAttributed(
   ingredients: Array<{ name: string; volumeMl: number; taste: TasteProfile }>,
   finalVolumeMl: number,
   dim: TasteDimension,
   p: number,
   stats: RecipeTasteStats,
 ): { score: number; parts: ScoreContribution[] } {
-  let linearAcc = 0;
-  let punchAcc = 0;
-  let seasoningShare = 0;
-  const linearMass: number[] = [];
-  const punchMass: number[] = [];
+  let raw = 0;
+  const parts: ScoreContribution[] = [];
 
   for (const item of ingredients) {
     const share = item.volumeMl / finalVolumeMl;
     const loud = relativeLoudness(item.taste[dim] ?? 0, stats);
-    if (share <= 0 || loud <= 0) {
-      linearMass.push(0);
-      punchMass.push(0);
-      continue;
-    }
-    const lm = share * loud;
-    const pm = share * loud ** p;
-    linearMass.push(lm);
-    punchMass.push(pm);
-    linearAcc += lm;
-    punchAcc += pm;
-    seasoningShare += share * seasoningLoudWeight(loud);
-  }
-
-  if (linearAcc <= 0 && punchAcc <= 0) return { score: 0, parts: [] };
-
-  const linear = applyMixGain(linearAcc);
-  const punch = punchAcc > 0 ? applyMixGain(punchAcc ** (1 / p)) : 0;
-  const weight = punchAcc > 0 ? seasoningPunchWeight(seasoningShare) : 0;
-  const score = linear * (1 - weight) + punch * weight;
-
-  const parts: ScoreContribution[] = [];
-  for (let i = 0; i < ingredients.length; i++) {
-    const fromLinear =
-      linearAcc > 0 ? (linearMass[i]! / linearAcc) * linear * (1 - weight) : 0;
-    const fromPunch =
-      punchAcc > 0 ? (punchMass[i]! / punchAcc) * punch * weight : 0;
-    const points = fromLinear + fromPunch;
+    if (share <= 0 || loud <= 0) continue;
+    const linear = share * loud;
+    const punch = loud * share ** (1 / p);
+    const weight =
+      seasoningPunchWeight(share * seasoningLoudWeight(loud)) *
+      punchIntensityWeight(loud);
+    const points = linear * (1 - weight) + punch * weight;
     if (points <= 0) continue;
-    parts.push({ name: ingredients[i]!.name, points });
+    raw += points;
+    parts.push({ name: item.name, points: applyMixGain(points) });
   }
 
-  return { score, parts };
+  if (raw <= 0) return { score: 0, parts: [] };
+  return { score: applyMixGain(raw), parts };
 }
 
 function prepareWeighted(
@@ -212,7 +198,7 @@ function prepareWeighted(
     }));
 }
 
-/** Relative loudness × p-norm × linear gain, plus per-dimension ingredient points. */
+/** Per-ingredient loudness blend × gain, plus per-dimension ingredient points. */
 export function attributeRecipeTaste(
   ingredients: MixIngredient[],
   finalVolumeMl: number,
@@ -229,7 +215,7 @@ export function attributeRecipeTaste(
   const rawParts: ScoreContributions = emptyContributions();
 
   for (const dim of TASTE_DIMENSIONS) {
-    const { score, parts } = pNormDimensionAttributed(
+    const { score, parts } = dimensionAttributed(
       weighted,
       tastingMl,
       dim,
@@ -256,7 +242,7 @@ export function attributeRecipeTaste(
   return { taste: capped, contributions };
 }
 
-/** Relative loudness × p-norm × linear gain. */
+/** Per-ingredient loudness blend × gain. */
 export function combineRecipeTaste(
   ingredients: MixIngredient[],
   finalVolumeMl: number,
