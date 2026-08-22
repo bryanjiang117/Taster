@@ -55,6 +55,11 @@ export type IngredientQuantity = {
   /** Defaults to `in` when omitted (legacy extracts). */
   role?: IngredientRole;
   mix?: IngredientMix;
+  /**
+   * Primary seasoner with a clearly ambiguous amount (to taste / as needed /
+   * missing). Triggers a post-mix Gemini adjustment of that seasoner's dimension.
+   */
+  quantityAmbiguous?: boolean;
 };
 
 export type ResolvedIngredient = {

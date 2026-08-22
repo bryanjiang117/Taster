@@ -22,14 +22,15 @@ input
         each extract tags role in|out and prep mix knobs; only `in` scores
         each unique name: ingredient cache → chemistry leaf → Gemini estimate if labs miss that exact name → nested full recipe search (same search stack)
         attributeRecipeTaste / combineRecipeTaste (loudness, linear or p=5, gain 1.75×) → cap at strongest in-ingredient; scoreContributions per dimension
+        if primary seasoners had ambiguous amounts (to taste / …): Gemini adjustAmbiguousSeasoning may raise those dims; flagged ingredients take uplift
         nested mixes persist as ingredients, not dishes
         top-level dish: upsert Turso `dishes` (running mean unless Euclidean outlier > 4; timesTasted always += 1)
         successful profile: stats.taste_count += 1 (global, all users)
 ```
 
-Dish mix: recipe-relative loudness (smooth blend from `score × (score/peak)^⅓` to full as ratio→1), then smooth blend of linear volume×score and p-norm punch-through (p=5; seasoning share uses loudness smoothstep ~4→7, punch weight midpoint ≈1.5%), linear gain (1.75×). All six dimensions use the same path. Stats use each ingredient's peak taste for the volume-weighted average. Result `scoreContributions` lists every positive ingredient point share per dimension (recomputed from representative + provenance on cache hits; rounded to 2 decimals with a 0.01 floor).
+Dish mix: recipe-relative loudness (smooth blend from `score × (score/peak)^⅓` to full as ratio→1), then **per-ingredient** blend of linear `share×loud` and punch `loud×share^(1/p)` (p=5; share weight loudness ~4→7 and midpoint ≈1.5%, times intensity smoothstep ~5.25→10). Dimension crowding does not change an ingredient’s punch term. Linear gain (1.75×). All six dimensions use the same path. Stats use each ingredient's peak taste for the volume-weighted average. Result `scoreContributions` lists every positive ingredient point share per dimension (recomputed from representative + provenance on cache hits; rounded to 2 decimals with a 0.01 floor).
 
-Hard cases (ambiguous origin, fermented/compound ingredients, leaf calibration) retry on `gemini-3.6-flash`. Model IDs live in `lib/engine/models.ts` (`FAST_MODEL` / `SMART_MODEL`).
+Hard cases (ambiguous origin, fermented/compound ingredients, leaf calibration, ambiguous primary-seasoner dish adjustment) retry on `gemini-3.6-flash`. Model IDs live in `lib/engine/models.ts` (`FAST_MODEL` / `SMART_MODEL`).
 
 ## Boundaries
 

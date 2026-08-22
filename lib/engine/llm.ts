@@ -10,6 +10,8 @@ import type { SearchHit } from "./search";
 import type { DishOrigin, Recipe, TasteDimension, TasteProfile } from "./types";
 import { TASTE_DIMENSIONS } from "./types";
 import type { SourcePicks, SourceShortlist } from "./identity";
+import type { ScoreContributions } from "./combine";
+import type { AmbiguousSeasoningAdjustment } from "./ambiguous-seasoning";
 
 export type IdentifyDishOptions = {
   searchMode?: SearchMode;
@@ -68,9 +70,29 @@ export interface LlmClient {
     name: string,
     context?: CulinaryContext,
   ): Promise<TasteProfile | undefined>;
+  /**
+   * After mix: set dish totals for dimensions driven by ambiguous primary
+   * seasoners (to taste / as needed / missing amount), and allocate uplift
+   * to those ingredients' contribution tips.
+   */
+  adjustAmbiguousSeasoning?(
+    input: AmbiguousSeasoningAdjustRequest,
+  ): Promise<AmbiguousSeasoningAdjustment | undefined>;
   /** Unused by the pipeline. Allowed on test stubs. */
   lookupIngredient?(name: string): Promise<unknown>;
 }
+
+export type AmbiguousSeasoningAdjustRequest = {
+  context: CulinaryContext;
+  engineTaste: TasteProfile;
+  contributions: ScoreContributions;
+  flagged: Array<{
+    name: string;
+    dimension: TasteDimension;
+    leafScore: number;
+    currentPoints: number;
+  }>;
+};
 
 export function classifyTasteInputPrompt(query: string): string {
   return `Classify this taste-profile query.
@@ -269,7 +291,24 @@ INGREDIENT: ${JSON.stringify(name)}`;
 }
 
 export const SYSTEM =
-  "You extract structured culinary data as JSON. Never invent a dish's final taste scores. Search native-language recipes for authentic versions, or the user's typed language for internationalized versions, as the task specifies. Leaf ingredient scores start from measured compounds; you may calibrate perception, and may estimate a grocery mouthful only when no lab source matched that exact name.";
+  "You extract structured culinary data as JSON. Never invent a dish's final taste scores, except when asked to adjust dimensions flagged from ambiguous primary-seasoner amounts (to taste / as needed / missing). Search native-language recipes for authentic versions, or the user's typed language for internationalized versions, as the task specifies. Leaf ingredient scores start from measured compounds; you may calibrate perception, and may estimate a grocery mouthful only when no lab source matched that exact name.";
+
+export function adjustAmbiguousSeasoningPrompt(
+  input: AmbiguousSeasoningAdjustRequest,
+): string {
+  const contextLine = culinaryContextLine(input.context);
+  return `Adjust ONLY the flagged dish taste dimensions. Recipes listed these primary seasoners with ambiguous amounts (to taste / as needed / missing), so the engine's volume guess under- or over-states how seasoned THIS dish should taste.
+${contextLine}
+ENGINE TASTE (0-10, do not change unflagged dimensions): ${JSON.stringify(input.engineTaste)}
+CURRENT CONTRIBUTORS (points toward each dimension): ${JSON.stringify(input.contributions)}
+FLAGGED SEASONERS (only these may receive uplift): ${JSON.stringify(input.flagged)}
+
+For each flagged dimension:
+- Set target to how strong that taste should be for THIS dish as typically eaten (cuisine + form). Anchors: 0 = none, 5 = clearly present, 8 = bold, 10 = extreme.
+- target must be >= the engine score for that dimension (you are adding seasoning, not removing it).
+- Allocate contributions[] points across the flagged ingredients for that dimension. Those points are the uplift from the engine total to target; they must sum to (target - engine). Check that the uplift size is plausible for those seasoners given their leaf scores and what other ingredients already contribute — do not dump a huge salty jump on a pinch-scale salt line if soy/fish sauce already carry the dish, and do not leave a characteristically seasoned dish near the engine under-estimate when salt/sugar/acid/chili/MSG was "to taste".
+Return adjustments only for flagged dimensions. Omit everything else.`;
+}
 
 export function geminiJsonRequest(
   model: string,
@@ -479,6 +518,38 @@ const ESTIMATE_SCHEMA = {
   required: ["taste"],
 };
 
+const ADJUST_AMBIGUOUS_SCHEMA = {
+  type: "object",
+  properties: {
+    adjustments: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          dimension: {
+            type: "string",
+            enum: ["sweet", "sour", "salty", "spicy", "umami", "bitter"],
+          },
+          target: { type: "number" },
+          contributions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                ingredient: { type: "string" },
+                points: { type: "number" },
+              },
+              required: ["ingredient", "points"],
+            },
+          },
+        },
+        required: ["dimension", "target", "contributions"],
+      },
+    },
+  },
+  required: ["adjustments"],
+};
+
 export class GeminiLlm implements LlmClient {
   private client: GoogleGenAI;
 
@@ -644,6 +715,18 @@ Query: ${query}`,
       ESTIMATE_SCHEMA,
     );
     return data.taste;
+  }
+
+  async adjustAmbiguousSeasoning(
+    input: AmbiguousSeasoningAdjustRequest,
+  ): Promise<AmbiguousSeasoningAdjustment | undefined> {
+    if (!input.flagged.length) return undefined;
+    const data = await this.json<AmbiguousSeasoningAdjustment>(
+      SMART_MODEL,
+      adjustAmbiguousSeasoningPrompt(input),
+      ADJUST_AMBIGUOUS_SCHEMA,
+    );
+    return data;
   }
 
   private async json<T>(

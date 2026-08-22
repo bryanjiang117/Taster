@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  adjustAmbiguousSeasoningPrompt,
   calibrateLeafPrompt,
   canonicalizeIngredientNamesPrompt,
   classifyTasteInputPrompt,
@@ -9,7 +10,10 @@ import {
   identifyDishPrompt,
   isCommonIngredientPrompt,
   recipeExtractPrompt,
+  SYSTEM,
 } from "./llm";
+import { emptyTaste } from "./taste";
+import type { ScoreContributions } from "./combine";
 
 describe("culinary context in LLM name prompts", () => {
   it("asks the model to use dish cuisine, not dictionary English", () => {
@@ -320,5 +324,31 @@ describe("identify dish prompt", () => {
     expect(typed).toContain("paella valenciana");
     expect(typed.toLowerCase()).toMatch(/honor|exact|specific/);
     expect(typed.toLowerCase()).toMatch(/typed|same language|script the user typed/);
+  });
+});
+
+describe("ambiguous seasoning adjustment prompt", () => {
+  it("asks for dish totals and per-flagged-ingredient uplift only", () => {
+    const emptyContrib = (): ScoreContributions => ({
+      sweet: [],
+      sour: [],
+      salty: [{ name: "salt", points: 0.4 }],
+      spicy: [],
+      umami: [],
+      bitter: [],
+    });
+    const prompt = adjustAmbiguousSeasoningPrompt({
+      context: { dish: "test dish", nativeName: "test dish", culture: "test" },
+      engineTaste: { ...emptyTaste(), salty: 2 },
+      contributions: emptyContrib(),
+      flagged: [
+        { name: "salt", dimension: "salty", leafScore: 10, currentPoints: 0.4 },
+      ],
+    });
+    expect(prompt.toLowerCase()).toContain("flagged");
+    expect(prompt.toLowerCase()).toContain("target");
+    expect(prompt.toLowerCase()).toContain("plausible");
+    expect(prompt).toContain("salt");
+    expect(SYSTEM.toLowerCase()).toMatch(/ambiguous primary-seasoner|to taste/);
   });
 });

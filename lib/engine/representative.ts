@@ -42,6 +42,7 @@ type NameAcc = {
   intensities: number[];
   scales: Partial<TasteProfile>[];
   whys: string[];
+  quantityAmbiguous: boolean;
 };
 
 function medianMix(acc: NameAcc): IngredientMix | undefined {
@@ -104,11 +105,13 @@ export function buildRepresentativeRecipe(
         intensities: [],
         scales: [],
         whys: [],
+        quantityAmbiguous: false,
       };
       list.shares.push(share);
       list.intensities.push(ingredient.mix?.intensity ?? 1);
       if (ingredient.mix?.scale) list.scales.push(ingredient.mix.scale);
       if (ingredient.mix?.why) list.whys.push(ingredient.mix.why);
+      if (ingredient.quantityAmbiguous) list.quantityAmbiguous = true;
       byName.set(name, list);
     }
   }
@@ -124,6 +127,7 @@ export function buildRepresentativeRecipe(
       volumeMl: meanShare * targetFinalVolumeMl,
       occurrence: { used, total },
       mix: medianMix(acc),
+      ...(acc.quantityAmbiguous ? { quantityAmbiguous: true } : {}),
     });
   }
 

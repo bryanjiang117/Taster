@@ -1,3 +1,5 @@
+import { primarySeasonerDimension } from "./ambiguous-seasoning";
+
 const ML: Record<string, number> = {
   ml: 1,
   milliliter: 1,
@@ -128,6 +130,15 @@ export function isSeasoningName(name: string): boolean {
   return SEASONING_NAME.test(name);
 }
 
+function isSeasoningGuessCandidate(name: string): boolean {
+  return isSeasoningName(name) || primarySeasonerDimension(name) != null;
+}
+
+/** Missing / to taste / as needed — not pinch/dash or measured units. */
+export function isSeasoningGuessQuantity(item: RawQuantity): boolean {
+  return classifyRaw(item).kind === "seasoning-guess";
+}
+
 /** Culinary “to taste” share of bulk dish volume. */
 function toTasteShare(name: string): number {
   if (SALT_NAME.test(name)) return 0.004;
@@ -198,13 +209,13 @@ function classifyRaw(item: RawQuantity): {
   const unitKey = rawUnit ? normalizeUnit(rawUnit) : "";
 
   if (!hasAmount && !unitKey) {
-    if (isSeasoningName(name)) return { kind: "seasoning-guess", amount: 1, unitKey: "" };
+    if (isSeasoningGuessCandidate(name)) return { kind: "seasoning-guess", amount: 1, unitKey: "" };
     return { kind: "count-default", amount: 1, unitKey: "piece" };
   }
 
   if (!unitKey && hasAmount) {
     // Bare number with no unit — treat seasoning as to-taste, else ml
-    if (isSeasoningName(name)) return { kind: "seasoning-guess", amount: item.amount!, unitKey: "" };
+    if (isSeasoningGuessCandidate(name)) return { kind: "seasoning-guess", amount: item.amount!, unitKey: "" };
     return { kind: "measured", amount: item.amount!, unitKey: "ml" };
   }
 
@@ -213,7 +224,9 @@ function classifyRaw(item: RawQuantity): {
     unitKey === "to taste" ||
     unitKey === "totaste" ||
     unitKey === "as needed" ||
-    unitKey === "asneeded"
+    unitKey === "asneeded" ||
+    unitKey === "season with" ||
+    unitKey === "seasonwith"
   ) {
     return { kind: "seasoning-guess", amount: 1, unitKey: "" };
   }
@@ -228,7 +241,7 @@ function classifyRaw(item: RawQuantity): {
   }
 
   if (!hasAmount) {
-    if (isSeasoningName(name)) return { kind: "seasoning-guess", amount: 1, unitKey: "" };
+    if (isSeasoningGuessCandidate(name)) return { kind: "seasoning-guess", amount: 1, unitKey: "" };
     return { kind: "count-default", amount: 1, unitKey: unitKey || "piece" };
   }
 
