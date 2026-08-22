@@ -419,6 +419,15 @@ describe("classify taste input prompt", () => {
     expect(prompt.toLowerCase()).toContain("unfamiliar");
   });
 
+  it("prefers dish when the name is both a grocery and a dish", () => {
+    const prompt = classifyTasteInputPrompt("lasagna").toLowerCase();
+    expect(prompt).toMatch(
+      /both a grocery and a dish[\s\S]*classify as "dish"/,
+    );
+    expect(prompt).not.toMatch(
+      /both a grocery and a dish[\s\S]*classify as "ingredient"/,
+    );
+  });
 });
 
 describe("identify dish prompt", () => {

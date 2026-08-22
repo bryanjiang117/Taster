@@ -4,7 +4,7 @@ Taster is a Next.js App Router app. All culinary logic lives in `lib/engine` so 
 
 ```
 input
-  → Flash-Lite classify: dish | ingredient | reject (brands / gibberish)
+  → Flash-Lite classify: dish | ingredient | reject (brands / gibberish; prefer dish when the name is both grocery and dish)
   → reject: user-facing error (no search)
   → ingredient (classified as ingredient; Reuse cache ignored):
         Turso hit → return intrinsic 0–10 vector

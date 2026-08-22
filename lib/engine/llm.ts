@@ -109,7 +109,7 @@ Be optimistic: prefer "dish" or "ingredient" over "reject" whenever the query co
 Allow minor spelling errors, especially for romanizations.
 - "dish": a prepared food or drink people cook or order (pad thai, ceviche, latte, chocolate cake). Prefer a dish, including if it's uncommon or regional.
 - "ingredient": a singular grocery food or cooking ingredient (lime, salt, chicken breast, fish sauce).
-If the same word is both a grocery and a dish people cook or order (spaghetti, ramen, pizza, salad), classify as "dish".
+If the same word is both a grocery and a dish people cook or order (lasagna, spaghetti, ramen, pizza, salad), classify as "dish" — prefer the prepared-food path whenever recipes exist.
 Reject only clear brands, product SKUs, random/gibberish keyboard mash, sentences, URLs, and obvious non-food. Do not reject because a name is unfamiliar, slangy — food reading wins.
 For ingredient, return a short singular English grocery name in "name".
 For reject, give a short "reason".
