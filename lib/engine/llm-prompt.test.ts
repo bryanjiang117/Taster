@@ -170,6 +170,8 @@ describe("leaf calibration prompt", () => {
     expect(prompt.toLowerCase()).not.toContain("gingerol");
     expect(prompt.toLowerCase()).toContain("salty");
     expect(prompt).toMatch(/8\.5/);
+    expect(prompt.toLowerCase()).toContain("cheese");
+    expect(prompt).toMatch(/cheese[^.]*≈\s*5|plain cheese ≈ 5/i);
     expect(prompt.toLowerCase()).toContain("make room");
     expect(prompt.toLowerCase()).toContain("sodium");
     expect(prompt.toLowerCase()).toMatch(/leaven|functional|thickener/);
@@ -317,7 +319,7 @@ describe("leafCatalogAnchors", () => {
         source: "measured",
       },
       {
-        ingredient: "garlic",
+        ingredient: "basil",
         taste: { sweet: 1, sour: 0, salty: 0, spicy: 0, umami: 1, bitter: 0 },
         derivedFrom: [],
         processing: [],
@@ -332,11 +334,65 @@ describe("leafCatalogAnchors", () => {
         confidence: 0.8,
         source: "measured",
       },
+      {
+        ingredient: "garlic",
+        taste: {
+          sweet: 1,
+          sour: 0.5,
+          salty: 0.1,
+          spicy: 0,
+          umami: 2.2,
+          bitter: 0,
+        },
+        derivedFrom: [],
+        processing: [],
+        confidence: 0.9,
+        source: "measured",
+      },
+      {
+        ingredient: "ginger",
+        taste: {
+          sweet: 0.5,
+          sour: 0.1,
+          salty: 0.1,
+          spicy: 0,
+          umami: 0,
+          bitter: 0,
+        },
+        derivedFrom: [],
+        processing: [],
+        confidence: 0.9,
+        source: "measured",
+      },
+      {
+        ingredient: "cheese",
+        taste: {
+          sweet: 0.1,
+          sour: 0.2,
+          salty: 5,
+          spicy: 0,
+          umami: 5,
+          bitter: 0.1,
+        },
+        derivedFrom: [],
+        processing: [],
+        confidence: 0.9,
+        source: "measured",
+      },
     ]);
     const anchors = leafCatalogAnchors(store);
-    expect(anchors.map((row) => row.name)).toEqual(["sugar", "mirin"]);
+    expect(anchors.map((row) => row.name)).toEqual([
+      "sugar",
+      "mirin",
+      "garlic",
+      "ginger",
+      "cheese",
+    ]);
     expect(anchors[0]?.taste.sweet).toBe(10);
     expect(anchors[1]?.taste.sweet).toBe(7);
+    expect(anchors[2]?.taste.umami).toBe(2.2);
+    expect(anchors[3]?.taste.spicy).toBe(0);
+    expect(anchors[4]?.taste.salty).toBe(5);
   });
 });
 

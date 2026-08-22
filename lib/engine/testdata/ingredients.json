@@ -173,15 +173,15 @@
     "taste": {
       "sweet": 1,
       "sour": 0.5,
-      "salty": 0,
+      "salty": 0.1,
       "spicy": 0,
-      "umami": 4,
-      "bitter": 1
+      "umami": 2.2,
+      "bitter": 0
     },
     "derivedFrom": [],
     "processing": [],
-    "confidence": 0.8,
-    "source": "nutrition"
+    "confidence": 0.9,
+    "source": "measured"
   },
   {
     "ingredient": "onion",
@@ -201,17 +201,17 @@
   {
     "ingredient": "ginger",
     "taste": {
-      "sweet": 1,
-      "sour": 1,
-      "salty": 0,
+      "sweet": 0.5,
+      "sour": 0.1,
+      "salty": 0.1,
       "spicy": 0,
-      "umami": 1,
-      "bitter": 1
+      "umami": 0,
+      "bitter": 0
     },
     "derivedFrom": [],
     "processing": [],
-    "confidence": 0.8,
-    "source": "nutrition"
+    "confidence": 0.9,
+    "source": "measured"
   },
   {
     "ingredient": "palm sugar",
@@ -301,6 +301,27 @@
     "derivedFrom": [],
     "processing": [],
     "confidence": 0.85,
+    "source": "measured"
+  },
+  {
+    "ingredient": "cheese",
+    "taste": {
+      "sweet": 0.1,
+      "sour": 0.2,
+      "salty": 5,
+      "spicy": 0,
+      "umami": 5,
+      "bitter": 0.1
+    },
+    "derivedFrom": [
+      "milk",
+      "salt"
+    ],
+    "processing": [
+      "aging",
+      "fermentation"
+    ],
+    "confidence": 0.9,
     "source": "measured"
   },
   {
