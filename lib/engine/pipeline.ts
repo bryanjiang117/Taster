@@ -59,6 +59,7 @@ import { emptyUmamiClient, UmamiDumpClient, type UmamiClient } from "./umamidb";
 import { emptyUsdaClient, UsdaFdcClient, type UsdaClient } from "./usda";
 import {
   culinaryContextFromOrigin,
+  leafCatalogAnchors,
   type CulinaryContext,
   type LlmClient,
   type TasteInputClassification,
@@ -941,7 +942,13 @@ async function resolveFood(
         : undefined,
       calibrateLeaf: deps.llm.calibrateLeafTaste
         ? (n, draft, evidence) =>
-            deps.llm.calibrateLeafTaste!(n, draft, evidence, run.context)
+            deps.llm.calibrateLeafTaste!(
+              n,
+              draft,
+              evidence,
+              run.context,
+              leafCatalogAnchors(run.store),
+            )
         : undefined,
     });
     if (leaf) {
@@ -949,7 +956,12 @@ async function resolveFood(
       await run.learnedFlush.onLearned(leaf);
       return leaf;
     }
-    const estimated = await estimateGroceryLeaf(canonical, deps, run.context);
+    const estimated = await estimateGroceryLeaf(
+      canonical,
+      deps,
+      run.context,
+      run.store,
+    );
     if (estimated) {
       run.store.put(estimated);
       await run.learnedFlush.onLearned(estimated);
@@ -997,10 +1009,12 @@ async function estimateGroceryLeaf(
   name: string,
   deps: PipelineDeps,
   context?: CulinaryContext,
+  store?: IngredientStore,
 ): Promise<ResolvedIngredient | null> {
   if (!deps.llm.estimateLeafTaste) return null;
   try {
-    const overlay = await deps.llm.estimateLeafTaste(name, context);
+    const anchors = store ? leafCatalogAnchors(store) : undefined;
+    const overlay = await deps.llm.estimateLeafTaste(name, context, anchors);
     if (!overlay) return null;
     return {
       ingredient: name,

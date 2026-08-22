@@ -155,6 +155,7 @@ export default function HomePage() {
 
   async function startTaste() {
     if (abortRef.current) return;
+    dishInputRef.current?.blur();
     const abort = new AbortController();
     abortRef.current = abort;
     const started = Date.now();

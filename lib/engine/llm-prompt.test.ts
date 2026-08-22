@@ -9,11 +9,14 @@ import {
   estimateLeafPrompt,
   identifyDishPrompt,
   isCommonIngredientPrompt,
+  leafCatalogAnchors,
   recipeExtractPrompt,
   SYSTEM,
 } from "./llm";
+import { IngredientStore } from "./store";
 import { emptyTaste } from "./taste";
 import type { ScoreContributions } from "./combine";
+import type { TasteProfile } from "./types";
 
 describe("culinary context in LLM name prompts", () => {
   it("asks the model to use dish cuisine, not dictionary English", () => {
@@ -206,6 +209,56 @@ describe("leaf calibration prompt", () => {
     expect(prompt.toLowerCase()).toContain("hot chili");
     expect(prompt.toLowerCase()).toContain("chili pepper");
   });
+
+  it("ranks sweet cooking wines below crystalline sugar and allows careful raise/lower", () => {
+    const prompt = calibrateLeafPrompt("mirin", {
+      sweet: 9,
+      sour: 0,
+      salty: 1,
+      spicy: 0,
+      umami: 1,
+      bitter: 0,
+    });
+    expect(prompt.toLowerCase()).toContain("mirin");
+    expect(prompt.toLowerCase()).toMatch(/brown sugar|crystalline sugar|table sugar/);
+    expect(prompt).toMatch(/5\s*[–-]\s*7/);
+    expect(prompt.toLowerCase()).toMatch(/raise|lower|careful/);
+  });
+
+  it("includes catalog anchor vectors when provided", () => {
+    const sugar: TasteProfile = {
+      sweet: 10,
+      sour: 0,
+      salty: 0,
+      spicy: 0,
+      umami: 0,
+      bitter: 0,
+    };
+    const mirin: TasteProfile = {
+      sweet: 7,
+      sour: 1,
+      salty: 1,
+      spicy: 0,
+      umami: 2,
+      bitter: 0,
+    };
+    const prompt = calibrateLeafPrompt(
+      "hon mirin",
+      { sweet: 9, sour: 0, salty: 0, spicy: 0, umami: 0, bitter: 0 },
+      undefined,
+      undefined,
+      [
+        { name: "sugar", taste: sugar },
+        { name: "mirin", taste: mirin },
+      ],
+    );
+    expect(prompt).toContain("CATALOG ANCHORS");
+    expect(prompt).toContain('"name":"sugar"');
+    expect(prompt).toContain('"sweet":10');
+    expect(prompt).toContain('"name":"mirin"');
+    expect(prompt).toContain('"sweet":7');
+    expect(prompt.toLowerCase()).toMatch(/rank|relative/);
+  });
 });
 
 describe("leaf estimate prompt", () => {
@@ -228,6 +281,62 @@ describe("leaf estimate prompt", () => {
     expect(prompt.toLowerCase()).toContain("laziji");
     expect(prompt.toLowerCase()).toContain("hot chili");
     expect(prompt.toLowerCase()).toContain("sweet chili");
+  });
+
+  it("ranks sweet cooking wines below sugar and includes catalog anchors when provided", () => {
+    const sugar: TasteProfile = {
+      sweet: 10,
+      sour: 0,
+      salty: 0,
+      spicy: 0,
+      umami: 0,
+      bitter: 0,
+    };
+    const prompt = estimateLeafPrompt(
+      "mirin",
+      undefined,
+      [{ name: "sugar", taste: sugar }],
+    );
+    expect(prompt.toLowerCase()).toContain("mirin");
+    expect(prompt).toMatch(/5\s*[–-]\s*7/);
+    expect(prompt).toContain("CATALOG ANCHORS");
+    expect(prompt).toContain('"name":"sugar"');
+    expect(prompt.toLowerCase()).toMatch(/raise|lower|careful/);
+  });
+});
+
+describe("leafCatalogAnchors", () => {
+  it("returns only known catalog rows for the fixed anchor list", () => {
+    const store = new IngredientStore([
+      {
+        ingredient: "sugar",
+        taste: { sweet: 10, sour: 0, salty: 0, spicy: 0, umami: 0, bitter: 0 },
+        derivedFrom: [],
+        processing: [],
+        confidence: 0.95,
+        source: "measured",
+      },
+      {
+        ingredient: "garlic",
+        taste: { sweet: 1, sour: 0, salty: 0, spicy: 0, umami: 1, bitter: 0 },
+        derivedFrom: [],
+        processing: [],
+        confidence: 0.95,
+        source: "measured",
+      },
+      {
+        ingredient: "mirin",
+        taste: { sweet: 7, sour: 1, salty: 1, spicy: 0, umami: 2, bitter: 0 },
+        derivedFrom: [],
+        processing: [],
+        confidence: 0.8,
+        source: "measured",
+      },
+    ]);
+    const anchors = leafCatalogAnchors(store);
+    expect(anchors.map((row) => row.name)).toEqual(["sugar", "mirin"]);
+    expect(anchors[0]?.taste.sweet).toBe(10);
+    expect(anchors[1]?.taste.sweet).toBe(7);
   });
 });
 
@@ -309,6 +418,7 @@ describe("classify taste input prompt", () => {
     expect(prompt.toLowerCase()).toContain("prefer");
     expect(prompt.toLowerCase()).toContain("unfamiliar");
   });
+
 });
 
 describe("identify dish prompt", () => {
