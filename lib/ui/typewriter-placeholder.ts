@@ -124,7 +124,7 @@ export function shufflePhrases(
 const DELAYS: Record<TypewriterPhase, number> = {
   type: 72,
   delete: 38,
-  hold: 2200,
+  hold: 3000,
 };
 
 export function startTypewriter(): TypewriterState {
