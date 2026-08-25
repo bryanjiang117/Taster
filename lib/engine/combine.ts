@@ -92,8 +92,8 @@ export function relativeLoudness(
   return quieted * (1 - peer) + score * peer;
 }
 
-/** Volume punch-through for seasonings in a large bowl (was 4; 5 favors spoon vs broth). */
-export const MIX_P_NORM = 5;
+/** Volume punch-through for seasonings (lower = gentler; salt seasons via leaf 12 instead). */
+export const MIX_P_NORM = 4;
 
 /** Linear boost after mix (~5 raw → ~8). */
 export const MIX_GAIN = 1.75;
@@ -107,7 +107,7 @@ export const SEASONING_SHARE = 0.015;
 /** Smoothstep ends: full punch by ~SEASONING_SHARE × 1.12, linear below ~×0.32. */
 const PUNCH_SHARE_LOW = SEASONING_SHARE * 0.32;
 const PUNCH_SHARE_HIGH = SEASONING_SHARE * 1.12;
-/** Mid notes only partially punch; peak culinary forms (≈10) get full intensity. */
+/** Mid notes only partially punch; peak culinary forms (≈10+) get full intensity. */
 export const PUNCH_INTENSITY_LOW = 5.25;
 export const PUNCH_INTENSITY_HIGH = 10;
 

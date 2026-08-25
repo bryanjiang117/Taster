@@ -75,7 +75,7 @@ import {
 } from "./search";
 import { loadProductionStore } from "./catalog";
 import { IngredientStore } from "./store";
-import { clampTaste, emptyTaste, roundTaste, TASTE_DIMENSIONS } from "./taste";
+import { clampTaste, emptyTaste, roundTaste, TASTE_DIMENSIONS, TASTE_LEAF_MAX } from "./taste";
 import {
   MAX_RESOLUTION_DEPTH,
   type DishOrigin,
@@ -1018,7 +1018,7 @@ async function estimateGroceryLeaf(
     if (!overlay) return null;
     return {
       ingredient: name,
-      taste: clampTaste({ ...emptyTaste(), ...overlay }),
+      taste: clampTaste({ ...emptyTaste(), ...overlay }, TASTE_LEAF_MAX),
       derivedFrom: [],
       processing: [],
       confidence: sourceConfidence("llm"),
@@ -1204,7 +1204,7 @@ function finishIngredientProfile(
     ],
   });
 
-  const rounded = roundTaste(clampTaste(resolved.taste));
+  const rounded = roundTaste(clampTaste(resolved.taste, TASTE_LEAF_MAX), 1, TASTE_LEAF_MAX);
 
   return {
     dish: query,

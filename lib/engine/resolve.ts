@@ -4,7 +4,7 @@ import { dishConfidence, sourceConfidence } from "./confidence";
 import { normalizeIngredientName } from "./normalize";
 import { applyProcessingToTaste } from "./processing";
 import { IngredientStore } from "./store";
-import { clampTaste, emptyTaste, overlayTaste } from "./taste";
+import { clampTaste, emptyTaste, overlayTaste, TASTE_LEAF_MAX } from "./taste";
 import {
   MAX_RESOLUTION_DEPTH,
   type ConfidenceSource,
@@ -69,7 +69,7 @@ export async function resolveIngredient(
     );
     const resolved: ResolvedIngredient = {
       ingredient: canonical,
-      taste: clampTaste(taste),
+      taste: clampTaste(taste, TASTE_LEAF_MAX),
       derivedFrom: lookup.derivedFrom ?? [],
       processing: lookup.processing ?? [],
       confidence: sourceConfidence("measured"),
@@ -103,7 +103,7 @@ export async function resolveIngredient(
 
     const resolved: ResolvedIngredient = {
       ingredient: canonical,
-      taste: clampTaste(taste),
+      taste: clampTaste(taste, TASTE_LEAF_MAX),
       derivedFrom: lookup.parts.map((part) => normalizeIngredientName(part.name)),
       processing: lookup.processing ?? [],
       confidence: dishConfidence(contributionParts),
@@ -134,7 +134,7 @@ function fromLookup(
 
   return {
     ingredient: name,
-    taste: clampTaste(taste),
+    taste: clampTaste(taste, TASTE_LEAF_MAX),
     derivedFrom: [],
     processing: lookup.kind === "llm" ? (lookup.processing ?? processing) : processing,
     confidence: sourceConfidence(source),

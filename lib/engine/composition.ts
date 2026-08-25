@@ -1,4 +1,4 @@
-import { clampTaste, emptyTaste } from "./taste";
+import { clampTaste, emptyTaste, TASTE_LEAF_MAX } from "./taste";
 import { TASTE_DIMENSIONS, type TasteDimension, type TasteProfile } from "./types";
 
 export type CompositionData = {
@@ -62,7 +62,10 @@ export function tasteFromComposition(data: CompositionData): TasteProfile {
     taste.sour = sourFromPh(data.pH);
   }
   if (data.sodiumMgPer100g != null) {
-    taste.salty = perceptualFromAmount(data.sodiumMgPer100g, COMPOSITION_TASTE_TAU.salty);
+    taste.salty =
+      data.sodiumMgPer100g >= 30000
+        ? TASTE_LEAF_MAX
+        : perceptualFromAmount(data.sodiumMgPer100g, COMPOSITION_TASTE_TAU.salty);
   }
   if (data.scoville != null) {
     taste.spicy = spicyFromScoville(data.scoville);
@@ -76,5 +79,5 @@ export function tasteFromComposition(data: CompositionData): TasteProfile {
     if (typeof index === "number") taste[dim] = index;
   }
 
-  return clampTaste(taste);
+  return clampTaste(taste, TASTE_LEAF_MAX);
 }

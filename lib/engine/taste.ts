@@ -13,15 +13,26 @@ export function emptyTaste(): TasteProfile {
   };
 }
 
-export function clampScore(value: number): number {
+/** Dish / UI display ceiling. */
+export const TASTE_DISPLAY_MAX = 10;
+/** Leaf ceiling — table salt sits above the usual 0–10 mouthful scale. */
+export const TASTE_LEAF_MAX = 12;
+
+export function clampScore(
+  value: number,
+  max: number = TASTE_DISPLAY_MAX,
+): number {
   if (Number.isNaN(value)) return 0;
-  return Math.min(10, Math.max(0, value));
+  return Math.min(max, Math.max(0, value));
 }
 
-export function clampTaste(taste: TasteProfile): TasteProfile {
+export function clampTaste(
+  taste: TasteProfile,
+  max: number = TASTE_DISPLAY_MAX,
+): TasteProfile {
   const out = emptyTaste();
   for (const dim of TASTE_DIMENSIONS) {
-    out[dim] = clampScore(taste[dim] ?? 0);
+    out[dim] = clampScore(taste[dim] ?? 0, max);
   }
   return out;
 }
@@ -97,20 +108,24 @@ export function overlayTaste(
   base: TasteProfile,
   overlay?: Partial<TasteProfile>,
 ): TasteProfile {
-  if (!overlay) return clampTaste(base);
-  const out = clampTaste(base);
+  if (!overlay) return clampTaste(base, TASTE_LEAF_MAX);
+  const out = clampTaste(base, TASTE_LEAF_MAX);
   for (const dim of TASTE_DIMENSIONS) {
     const value = overlay[dim];
-    if (value != null && value > 0) out[dim] = clampScore(value);
+    if (value != null && value > 0) out[dim] = clampScore(value, TASTE_LEAF_MAX);
   }
   return out;
 }
 
-export function roundTaste(taste: TasteProfile, digits = 1): TasteProfile {
+export function roundTaste(
+  taste: TasteProfile,
+  digits = 1,
+  max: number = TASTE_DISPLAY_MAX,
+): TasteProfile {
   const out = emptyTaste();
   const p = 10 ** digits;
   for (const dim of TASTE_DIMENSIONS) {
-    out[dim] = Math.round(clampScore(taste[dim]) * p) / p;
+    out[dim] = Math.round(clampScore(taste[dim], max) * p) / p;
   }
   return out;
 }

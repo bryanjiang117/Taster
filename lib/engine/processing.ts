@@ -1,4 +1,4 @@
-import { clampTaste, scaleTaste } from "./taste";
+import { clampTaste, scaleTaste, TASTE_LEAF_MAX } from "./taste";
 import type { TasteProfile } from "./types";
 
 const PROCESS_MULTIPLIERS: Record<string, Partial<TasteProfile>> = {
@@ -26,7 +26,7 @@ export function applyProcessingToTaste(
     }
     next = scaled;
   }
-  return clampTaste(next);
+  return clampTaste(next, TASTE_LEAF_MAX);
 }
 
 export function applySolubleRetention(

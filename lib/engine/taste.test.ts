@@ -9,9 +9,11 @@ describe("taste scores", () => {
     }
   });
 
-  it("clamps scores to 0–10", () => {
+  it("clamps display scores to 0–10 and leaves up to 12", () => {
     expect(clampScore(-2)).toBe(0);
     expect(clampScore(11)).toBe(10);
+    expect(clampScore(11, 12)).toBe(11);
+    expect(clampScore(13, 12)).toBe(12);
     expect(clampScore(7.4)).toBe(7.4);
   });
 

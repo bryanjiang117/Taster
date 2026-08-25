@@ -24,11 +24,11 @@ describe("acidProcessFood", () => {
 });
 
 describe("compound mixer", () => {
-  it("maps table salt sodium to a near-ceiling salty mouthful", () => {
+  it("maps table salt sodium above the usual 0–10 mouthful scale", () => {
     const { taste, evidence } = draftTasteFromCompounds(
       amounts([["sodium", 38700]]),
     );
-    expect(taste.salty).toBeGreaterThan(9);
+    expect(taste.salty).toBe(12);
     expect(evidence.salty).toBe(true);
     expect(evidence.sweet).toBe(false);
   });

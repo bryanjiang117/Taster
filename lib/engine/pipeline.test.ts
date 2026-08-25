@@ -505,7 +505,7 @@ describe("profileDish pipeline", () => {
         },
         {
           ingredient: "salt",
-          taste: { sweet: 0, sour: 0, salty: 10, spicy: 0, umami: 0, bitter: 0 },
+          taste: { sweet: 0, sour: 0, salty: 12, spicy: 0, umami: 0, bitter: 0 },
           derivedFrom: [],
           processing: [],
           confidence: 0.9,

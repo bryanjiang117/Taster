@@ -21,7 +21,7 @@ import {
 import { normalizeIngredientName } from "./normalize";
 import type { PhenolClient } from "./phenol";
 import { IngredientStore } from "./store";
-import { clampTaste } from "./taste";
+import { clampTaste, TASTE_LEAF_MAX } from "./taste";
 import type { ResolvedIngredient, TasteDimension, TasteProfile } from "./types";
 import type { UmamiClient } from "./umamidb";
 import type { FoodHit, UsdaClient } from "./usda";
@@ -233,7 +233,7 @@ async function finishLeaf(
   }
   return {
     ingredient: canonical,
-    taste: clampTaste(taste),
+    taste: clampTaste(taste, TASTE_LEAF_MAX),
     derivedFrom,
     processing: [],
     confidence: sourceConfidence(source),

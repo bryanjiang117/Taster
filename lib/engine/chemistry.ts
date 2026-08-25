@@ -1,5 +1,11 @@
 import { findCompound, type CompoundDef } from "./compounds";
-import { clampScore, clampTaste, emptyTaste } from "./taste";
+import {
+  clampScore,
+  clampTaste,
+  emptyTaste,
+  TASTE_DISPLAY_MAX,
+  TASTE_LEAF_MAX,
+} from "./taste";
 import { TASTE_DIMENSIONS, type TasteDimension, type TasteProfile } from "./types";
 
 export type CompoundAmount = {
@@ -14,9 +20,12 @@ export type ChemistryDraft = {
   measured: boolean;
 };
 
+/** Pure NaCl is ~38700 mg Na / 100g — above the usual mouthful 0–10 scale. */
+const TABLE_SALT_SODIUM_MG = 30000;
+
 function saturatingScore(amount: number, tau: number): number {
   if (amount <= 0 || tau <= 0) return 0;
-  return clampScore(10 * (1 - Math.exp(-amount / tau)));
+  return clampScore(TASTE_DISPLAY_MAX * (1 - Math.exp(-amount / tau)));
 }
 
 function emptyEvidence(): Record<TasteDimension, boolean> {
@@ -71,7 +80,12 @@ export function draftTasteFromCompounds(amounts: CompoundAmount[]): ChemistryDra
   if (acidEq > 0) taste.sour = saturatingScore(acidEq, 2500);
 
   const sodiumEq = sumClass(resolved, "sodium");
-  if (sodiumEq > 0) taste.salty = saturatingScore(sodiumEq, 900);
+  if (sodiumEq > 0) {
+    taste.salty =
+      sodiumEq >= TABLE_SALT_SODIUM_MG
+        ? TASTE_LEAF_MAX
+        : saturatingScore(sodiumEq, 900);
+  }
 
   const glutamateEq =
     sumClass(resolved, "glutamate") + sumClass(resolved, "glutamate_bound");
@@ -103,7 +117,11 @@ export function draftTasteFromCompounds(amounts: CompoundAmount[]): ChemistryDra
     if (taste[dim] <= 0) evidence[dim] = evidence[dim] && taste[dim] > 0;
   }
 
-  return { taste: clampTaste(taste), evidence, measured: resolved.length > 0 };
+  return {
+    taste: clampTaste(taste, TASTE_LEAF_MAX),
+    evidence,
+    measured: resolved.length > 0,
+  };
 }
 
 function sumClass(
@@ -197,7 +215,7 @@ export function applyCalibration(
   name?: string,
 ): TasteProfile {
   const out = { ...draft.taste };
-  if (!overlay) return clampTaste(out);
+  if (!overlay) return clampTaste(out, TASTE_LEAF_MAX);
   const anyEvidence = hasChemistryEvidence(draft);
   for (const dim of TASTE_DIMENSIONS) {
     const value = overlay[dim];
@@ -207,7 +225,7 @@ export function applyCalibration(
     if (!draft.evidence[dim] && !(anyEvidence && labGap)) {
       continue;
     }
-    out[dim] = clampScore(value);
+    out[dim] = clampScore(value, TASTE_LEAF_MAX);
   }
-  return clampTaste(out);
+  return clampTaste(out, TASTE_LEAF_MAX);
 }

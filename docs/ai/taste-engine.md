@@ -6,20 +6,20 @@ Scores are 0–10 on: sweet, sour, salty, spicy, umami, bitter.
 
 ## Dish mix (implemented)
 
-Mix is recipe-relative loudness, then a **per-ingredient** blend of **linear `share×loud`** (traces) and **punch `loud×share^(1/p)`** (p=5). Peer blend: quieted end is `score × (score/peak)^⅓`, full score as `max(score/peak, score/avg) → 1` (smoothstep from ~0.42; no hard 85% cliff). Each ingredient’s punch weight uses only its bowl share (loudness smoothstep ~4→7, share midpoint ≈1.5%) times an intensity smoothstep (~5.25→10). Dimension crowding does not change that term — a spoon of ketchup sweet ≈7 lands ~2, not leaf-like; salt/sugar/chili ≈10 still season a bowl. Sum ingredients, then linear gain (1.75×). Cap at strongest in-ingredient leaf.
+Mix is recipe-relative loudness, then a **per-ingredient** blend of **linear `share×loud`** (traces) and **punch `loud×share^(1/p)`** (p=4). Peer blend: quieted end is `score × (score/peak)^⅓`, full score as `max(score/peak, score/avg) → 1` (smoothstep from ~0.42; no hard 85% cliff). Each ingredient’s punch weight uses only its bowl share (loudness smoothstep ~4→7, share midpoint ≈1.5%) times an intensity smoothstep (~5.25→10). Dimension crowding does not change that term — a spoon of ketchup sweet ≈7 lands soft; sugar/chili ≈10 punch a bit less than the old p=5 path; **table salt ≈12** still seasons a bowl. Sum ingredients, then linear gain (1.75×). Cap at strongest in-ingredient leaf, then clamp the dish vector to 0–10.
 
 **Spicy is chili heat** (capsaicin). Ginger, garlic, mustard, and Sichuan peppercorn are 0 spicy. Black pepper as a leaf is ≈ 0.2 (freshly cracked ≈ 0.5 via Gemini `mix.scale`); a spoon of it stays near 0. Spicy mixes like every other dimension (relative loudness + per-ingredient linear/punch blend).
 
 `pipeline.ts` does:
 
 1. Resolve each in-ingredient (cache → chemistry leaf → Gemini estimate if labs miss that exact name → nested recipe)
-2. `attributeRecipeTaste` / `combineRecipeTaste` → intensity/scale, recipe-relative loudness, per-ingredient linear/punch blend (p=5, intensity ~5.25→10), linear gain (1.75×), plus per-dimension ingredient contribution points
+2. `attributeRecipeTaste` / `combineRecipeTaste` → intensity/scale, recipe-relative loudness, per-ingredient linear/punch blend (p=4, intensity ~5.25→10), linear gain (1.75×), plus per-dimension ingredient contribution points
 3. `applySolubleRetention` if cooking liquid was discarded
-4. Cap is inside combine: no dimension exceeds the strongest in-ingredient
+4. Cap is inside combine: no dimension exceeds the strongest in-ingredient; dish display clamps to 0–10
 5. If any representative `in` primary seasoner is `quantityAmbiguous` (missing / to taste / as needed / season with — salt, sugar/honey, lemon/lime/vinegar, chili, MSG), Gemini `adjustAmbiguousSeasoning` may raise those dish dimensions (never below engine). Flagged seasoners take the contribution uplift (Gemini allocates when several share a dim). Other dims untouched.
 6. `roundTaste`, and align/round contribution points to that vector (UI lists every positive contributor at 2 decimals with a 0.01 floor so tiny shares still show; tips show 5 then “Show more”)
 
-Bland dishes stay low when their notes are traces vs the recipe peak. High seasonings punch through volume. Pure ingredient queries skip mix and return the catalog vector (contribution tip is that one ingredient at the full score).
+Bland dishes stay low when their notes are traces vs the recipe peak. Salt seasons via a leaf ≈12; other high seasonings punch through more gently. Pure ingredient queries skip mix and return the catalog vector (contribution tip is that one ingredient at the full score).
 
 Hovering a dish score in the UI opens the same style of tip as ingredients: ingredient name and `+points` toward that 0–10. Attribution is each in-ingredient’s blended points (its own linear/punch mix), scaled so all positives sum to the final capped score.
 
