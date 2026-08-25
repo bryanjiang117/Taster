@@ -75,6 +75,35 @@ const ALIAS_PAIRS: Array<[string, string]> = [
   ["กะทิ", "coconut milk"],
 ];
 
+const TRAILING_CLOSERS: Record<string, string> = {
+  "]": "[",
+  ")": "(",
+  "}": "{",
+  ">": "<",
+};
+
+/** Keep the typed dish, drop unmatched trailing junk like "Nham Khao Tod]". */
+export function tidyQueryName(name: string): string {
+  let out = name.normalize("NFC").replace(/\s+/g, " ").trim();
+  if (!out) return name.trim();
+
+  for (let i = 0; i < 8; i++) {
+    const noPunct = out.replace(/[.!?…,;:]+$/u, "");
+    if (noPunct !== out) {
+      out = noPunct.trim();
+      continue;
+    }
+    const last = out[out.length - 1];
+    const opener = last ? TRAILING_CLOSERS[last] : undefined;
+    if (opener && !out.slice(0, -1).includes(opener)) {
+      out = out.slice(0, -1).trim();
+      continue;
+    }
+    break;
+  }
+  return out || name.trim();
+}
+
 function cleanName(name: string): string {
   return name
     .normalize("NFC")

@@ -167,6 +167,41 @@ describe("profileDish dish cache", () => {
     expect(persisted[0]?.timesTasted).toBe(2);
   });
 
+  it("tastes a query with stray punctuation under the cleaned name", async () => {
+    const identified: string[] = [];
+    const persisted: CachedDish[] = [];
+    const result = await profileDish("mapo tofu]", {
+      llm: llm({
+        classifyTasteInput: async () => ({ kind: "dish" }),
+        identifyDish: async (dish) => {
+          identified.push(dish);
+          return {
+            dish,
+            country: "China",
+            culture: "Sichuan",
+            nativeName: "麻婆豆腐",
+            language: "Chinese",
+            languageCode: "zh",
+            searchQueries: ["麻婆豆腐 食谱"],
+          };
+        },
+      }),
+      search: searchPages(),
+      pages: pages(),
+      store: ingredients,
+      dishStore: new DishStore(),
+      persistDish: (record) => {
+        persisted.push(record);
+      },
+    });
+
+    expect(identified).toEqual(["mapo tofu"]);
+    expect(result.dish).toBe("mapo tofu");
+    expect(result.origin.dish).toBe("mapo tofu");
+    expect(persisted[0]?.canonicalName).toBe("mapo tofu");
+    expect(persisted[0]?.aliases.join(" ")).not.toMatch(/]/);
+  });
+
   it("passes typed search mode into origin identification", async () => {
     const modes: string[] = [];
     await profileDish("mapo tofu", {

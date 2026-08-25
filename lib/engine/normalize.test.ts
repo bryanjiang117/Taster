@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { normalizeIngredientName } from "./normalize";
+import { normalizeIngredientName, tidyQueryName } from "./normalize";
+
+describe("tidyQueryName", () => {
+  it("drops unmatched trailing brackets and extra spaces", () => {
+    expect(tidyQueryName("Nham Khao Tod]")).toBe("Nham Khao Tod");
+    expect(tidyQueryName("  pad thai  ")).toBe("pad thai");
+  });
+
+  it("drops trailing sentence punctuation without renaming the dish", () => {
+    expect(tidyQueryName("Pad Thai!!!")).toBe("Pad Thai");
+    expect(tidyQueryName("som tam.")).toBe("som tam");
+  });
+
+  it("keeps balanced parentheticals and inner punctuation", () => {
+    expect(tidyQueryName("Mapo Tofu (麻婆豆腐)")).toBe("Mapo Tofu (麻婆豆腐)");
+    expect(tidyQueryName("bird's eye chili")).toBe("bird's eye chili");
+  });
+});
 
 describe("ingredient name normalization", () => {
   it("lowercases and strips punctuation", () => {

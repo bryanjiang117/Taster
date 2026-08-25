@@ -10,6 +10,7 @@ import type { ScoreContributions } from "@/lib/engine/combine";
 import type { FoundIngredient } from "@/lib/engine/found-ingredients";
 import type { TasteProfile } from "@/lib/engine/taste";
 import type { ProgressStepEvent } from "@/lib/engine/progress";
+import { tidyQueryName } from "@/lib/engine/normalize";
 import { readProgressStream } from "@/lib/ui/progress-stream";
 
 const USE_CACHE_KEY = "taster.useCache";
@@ -160,6 +161,8 @@ export default function HomePage() {
     const abort = new AbortController();
     abortRef.current = abort;
     dishInputRef.current?.blur();
+    const query = tidyQueryName(dish);
+    if (query !== dish) setDish(query);
     const started = Date.now();
     setError(null);
     setResult(null);
@@ -171,7 +174,7 @@ export default function HomePage() {
       const response = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dish, useCache, typedLanguage }),
+        body: JSON.stringify({ dish: query, useCache, typedLanguage }),
         signal: abort.signal,
       });
 

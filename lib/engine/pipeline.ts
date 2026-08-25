@@ -26,7 +26,7 @@ import {
   flavorsFromTaste,
   accompanimentFootnote,
 } from "./found-ingredients";
-import { normalizeIngredientName } from "./normalize";
+import { normalizeIngredientName, tidyQueryName } from "./normalize";
 import { applySolubleRetention } from "./processing";
 import { applyPrepMixHeuristics } from "./prep-mix";
 import {
@@ -193,6 +193,7 @@ export async function profileDish(
   dish: string,
   deps: PipelineDeps,
 ): Promise<DishProfileResult> {
+  dish = tidyQueryName(dish);
   const emit = deps.onProgress;
   throwIfAborted(deps.signal);
   deps = wiredDeps(deps);

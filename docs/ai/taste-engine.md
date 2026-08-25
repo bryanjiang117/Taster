@@ -64,7 +64,7 @@ Aim for 3 on-topic recipes, then up to 7 if they disagree. Search Gemini and Duc
 
 ## LLM jobs (only)
 
-Gemini 3.5 Flash-Lite by default: classify input (dish / ingredient / reject), origin (bare dish names resolve to the popular form people usually mean; specific style/region qualifiers are honored), native-language or typed-language search, URL-context recipe parse, ingredient name canonicalize, common-pantry check, cached-dish matching, leaf calibration, grocery-leaf estimate when labs miss.
+Gemini 3.5 Flash-Lite by default: classify input (dish / ingredient / reject), origin (bare dish names resolve to the popular form people usually mean; specific style/region qualifiers are honored), native-language or typed-language search, URL-context recipe parse, ingredient name canonicalize, common-pantry check, cached-dish matching, leaf calibration, grocery-leaf estimate when labs miss. Typed queries are tidied of unmatched trailing punctuation first (`Nham Khao Tod]` → `Nham Khao Tod`) without renaming the dish.
 
 Gemini 3.6 Flash for hard cases: weak origin, sauces/pastes/fermented compounds, leaf calibration on those names, and missing-amount fill (`estimateMissingAmounts`).
 
