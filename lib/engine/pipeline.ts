@@ -15,11 +15,6 @@ import {
   type MixIngredient,
   type ScoreContributions,
 } from "./combine";
-import {
-  applyAmbiguousSeasoningAdjustment,
-  primarySeasonerDimension,
-  type FlaggedAmbiguousSeasoner,
-} from "./ambiguous-seasoning";
 import { applyEnglishNames, uniqueIngredientNames } from "./english-names";
 import {
   matchesDish,
@@ -34,6 +29,10 @@ import {
 import { normalizeIngredientName } from "./normalize";
 import { applySolubleRetention } from "./processing";
 import { applyPrepMixHeuristics } from "./prep-mix";
+import {
+  applyMissingAmountEstimates,
+  recipesHaveMissingAmounts,
+} from "./fill-amounts";
 import { runLoggedStep, type ProgressSink } from "./progress";
 import { rethrowIfAborted, throwIfAborted } from "./abort";
 import { buildRepresentativeRecipe } from "./representative";
@@ -291,14 +290,14 @@ async function tasteFromRecipes(
     throw new Error(emptyRecipeMessage(query, collected));
   }
 
-  const recipes = applyPrepMixHeuristics(
-    await matchRecipeIngredients(
-      collected.recipes,
-      run.store,
-      deps,
-      culinaryContextFromOrigin(origin),
-    ),
+  let recipes = await matchRecipeIngredients(
+    collected.recipes,
+    run.store,
+    deps,
+    culinaryContextFromOrigin(origin),
   );
+  recipes = await fillMissingRecipeAmounts(recipes, origin, deps, emit);
+  recipes = applyPrepMixHeuristics(recipes);
 
   await resolveMissingIngredients(recipes, run, deps, true);
 
@@ -384,19 +383,6 @@ async function tasteFromRecipes(
     deps.signal,
   );
 
-  const adjusted = await adjustAmbiguousSeasoners({
-    taste,
-    scoreContributions,
-    representative: representative.built.ingredients,
-    mixable,
-    context: run.context ?? { dish: query, nativeName: query },
-    llm: deps.llm,
-    emit,
-    signal: deps.signal,
-  });
-  const tasteAfter = adjusted.taste;
-  const scoreContributionsAfter = adjusted.scoreContributions;
-
   const contributions = mixable.map((ingredient, i) => ({
     confidence: resolved[i]?.confidence ?? 0,
     contribution: TASTE_DIMENSIONS.reduce(
@@ -427,7 +413,7 @@ async function tasteFromRecipes(
 
   const foundItems = foundIngredientsFromRecipes(recipes, run.store);
   const footnote = accompanimentFootnote(foundItems);
-  const roundedTaste = roundTaste(tasteAfter);
+  const roundedTaste = roundTaste(taste);
 
   return {
     dish: query,
@@ -447,7 +433,7 @@ async function tasteFromRecipes(
     },
     provenance: resolved,
     scoreContributions: finalizeScoreContributions(
-      scoreContributionsAfter,
+      scoreContributions,
       roundedTaste,
     ),
     footnote,
@@ -1349,89 +1335,32 @@ function finalizeScoreContributions(
   return roundScoreContributions(alignScoreContributions(contributions, taste));
 }
 
-async function adjustAmbiguousSeasoners(input: {
-  taste: TasteProfile;
-  scoreContributions: ScoreContributions;
-  representative: Array<{
-    name: string;
-    quantityAmbiguous?: boolean;
-    role?: "in" | "out";
-  }>;
-  mixable: MixIngredient[];
-  context: CulinaryContext;
-  llm: LlmClient;
-  emit: ProgressSink | undefined;
-  signal?: AbortSignal;
-}): Promise<{ taste: TasteProfile; scoreContributions: ScoreContributions }> {
-  const leafByName = new Map(
-    input.mixable.map((item) => [
-      normalizeIngredientName(item.name ?? ""),
-      item.taste,
-    ]),
-  );
-  const flagged: FlaggedAmbiguousSeasoner[] = [];
-  const flaggedDetail: Array<{
-    name: string;
-    dimension: (typeof TASTE_DIMENSIONS)[number];
-    leafScore: number;
-    currentPoints: number;
-  }> = [];
-
-  for (const ingredient of input.representative) {
-    if (!ingredient.quantityAmbiguous || ingredient.role === "out") continue;
-    const name = normalizeIngredientName(ingredient.name);
-    const dimension = primarySeasonerDimension(name);
-    if (!dimension) continue;
-    flagged.push({ name, dimension });
-    const leaf = leafByName.get(name);
-    flaggedDetail.push({
-      name,
-      dimension,
-      leafScore: leaf?.[dimension] ?? 0,
-      currentPoints:
-        input.scoreContributions[dimension].find((row) => row.name === name)
-          ?.points ?? 0,
-    });
+async function fillMissingRecipeAmounts(
+  recipes: Recipe[],
+  origin: DishOrigin,
+  deps: PipelineDeps,
+  emit: ProgressSink | undefined,
+): Promise<Recipe[]> {
+  if (!recipesHaveMissingAmounts(recipes) || !deps.llm.estimateMissingAmounts) {
+    return recipes;
   }
-
-  if (!flagged.length || !input.llm.adjustAmbiguousSeasoning) {
-    return {
-      taste: input.taste,
-      scoreContributions: input.scoreContributions,
-    };
-  }
-
-  const dims = [...new Set(flagged.map((row) => row.dimension))];
   try {
-    const adjustment = await runLoggedStep(
-      input.emit,
-      "adjust-ambiguous",
-      `Adjusting ${dims.join(", ")} from ambiguous seasoning amounts`,
-      () =>
-        input.llm.adjustAmbiguousSeasoning!({
-          context: input.context,
-          engineTaste: input.taste,
-          contributions: input.scoreContributions,
-          flagged: flaggedDetail,
-        }),
-      input.signal,
+    return await runLoggedStep(
+      emit,
+      "fill-amounts",
+      "Estimating missing ingredient amounts from recipe context",
+      async () => {
+        const estimates = await deps.llm.estimateMissingAmounts!({
+          context: culinaryContextFromOrigin(origin),
+          recipes,
+        });
+        return applyMissingAmountEstimates(recipes, estimates ?? []);
+      },
+      deps.signal,
     );
-    const applied = applyAmbiguousSeasoningAdjustment({
-      taste: input.taste,
-      contributions: input.scoreContributions,
-      flagged,
-      adjustment,
-    });
-    return {
-      taste: applied.taste,
-      scoreContributions: applied.contributions,
-    };
   } catch (error) {
     rethrowIfAborted(error);
-    return {
-      taste: input.taste,
-      scoreContributions: input.scoreContributions,
-    };
+    return recipes;
   }
 }
 

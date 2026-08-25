@@ -1,6 +1,5 @@
-import { primarySeasonerDimension } from "./ambiguous-seasoning";
 import type { CompositionData } from "./composition";
-import { isSeasoningGuessQuantity, resolveRecipeVolumes } from "./quantity";
+import { isAmbiguousRawQuantity, resolveRecipeVolumes } from "./quantity";
 import type { UnknownLookup } from "./resolve";
 import type { IngredientRole, ProcessEffect, Recipe, TasteProfile } from "./types";
 
@@ -136,14 +135,14 @@ export function recipeFromExtractJson(
     title: data.title,
     url: sourceUrl,
     ingredients: raw.map((item, index) => {
-      const quantityAmbiguous =
-        isSeasoningGuessQuantity(item) &&
-        primarySeasonerDimension(item.name) != null;
+      const quantityAmbiguous = isAmbiguousRawQuantity(item);
       return {
         name: item.name,
         volumeMl: volumes[index]!,
         role: item.role,
         mix: item.mix,
+        ...(!quantityAmbiguous && item.amount != null ? { amount: item.amount } : {}),
+        ...(!quantityAmbiguous && item.unit ? { unit: item.unit } : {}),
         ...(quantityAmbiguous ? { quantityAmbiguous: true } : {}),
       };
     }),

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  adjustAmbiguousSeasoningPrompt,
   calibrateLeafPrompt,
   canonicalizeIngredientNamesPrompt,
   classifyTasteInputPrompt,
@@ -11,11 +10,8 @@ import {
   isCommonIngredientPrompt,
   leafCatalogAnchors,
   recipeExtractPrompt,
-  SYSTEM,
 } from "./llm";
 import { IngredientStore } from "./store";
-import { emptyTaste } from "./taste";
-import type { ScoreContributions } from "./combine";
 import type { TasteProfile } from "./types";
 
 describe("culinary context in LLM name prompts", () => {
@@ -84,6 +80,8 @@ describe("culinary context in LLM name prompts", () => {
     );
     expect(extract.toLowerCase()).toContain("pinch");
     expect(extract.toLowerCase()).toMatch(/never for salt|not tbsp/);
+    expect(extract.toLowerCase()).toMatch(/omit amount and unit/);
+    expect(extract.toLowerCase()).not.toMatch(/give a measured guess/);
     expect(extract.toLowerCase()).toMatch(
       /different dish|not (the )?target|return \{\"ingredients\":\[\]\}|empty ingredients/,
     );
@@ -502,28 +500,3 @@ describe("identify dish prompt", () => {
   });
 });
 
-describe("ambiguous seasoning adjustment prompt", () => {
-  it("asks for dish totals and per-flagged-ingredient uplift only", () => {
-    const emptyContrib = (): ScoreContributions => ({
-      sweet: [],
-      sour: [],
-      salty: [{ name: "salt", points: 0.4 }],
-      spicy: [],
-      umami: [],
-      bitter: [],
-    });
-    const prompt = adjustAmbiguousSeasoningPrompt({
-      context: { dish: "test dish", nativeName: "test dish", culture: "test" },
-      engineTaste: { ...emptyTaste(), salty: 2 },
-      contributions: emptyContrib(),
-      flagged: [
-        { name: "salt", dimension: "salty", leafScore: 10, currentPoints: 0.4 },
-      ],
-    });
-    expect(prompt.toLowerCase()).toContain("flagged");
-    expect(prompt.toLowerCase()).toContain("target");
-    expect(prompt.toLowerCase()).toContain("plausible");
-    expect(prompt).toContain("salt");
-    expect(SYSTEM.toLowerCase()).toMatch(/ambiguous primary-seasoner|to taste/);
-  });
-});

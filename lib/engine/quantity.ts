@@ -83,6 +83,10 @@ const PIECE_RULES: PieceRule[] = [
 
 const WHOLE_BIRD_ML = 1600;
 
+/** Cuts of the same food — not a different grocery that happens to contain the word. */
+const CUT_OR_PART =
+  /\b(breasts?|thighs?|fillets?|filets?|chops?|steaks?|wings?|legs?|loins?|ribs?|tenderloins?|cutlets?|drumsticks?|quarters?|shanks?|briskets?|flanks?|sirloins?|tenders?|shoulders?|bellies?|racks?|mince)\b/i;
+
 const SALT_NAME =
   /\b(salt|kosher\s+salt|sea\s+salt|table\s+salt|sal|sel|塩|盐)\b/i;
 /** Ground/dried pepper & spices — not fresh chili / bell pepper fruits. */
@@ -101,18 +105,40 @@ function normalizeUnit(unit: string): string {
   return unit.toLowerCase().replace(/\./g, "").trim();
 }
 
+function remainderAfterMatch(name: string, match: RegExpMatchArray): string {
+  return name.slice((match.index ?? 0) + match[0].length).trim();
+}
+
+/** True when the matched food is what is being counted, not a modifier in another grocery. */
+function pieceRuleApplies(name: string, food: RegExp): boolean {
+  const match = name.match(food);
+  if (!match) return false;
+  const after = remainderAfterMatch(name, match);
+  if (!after) return true;
+  const tokens = after.toLowerCase().split(/[\s/-]+/).filter(Boolean);
+  return tokens.every((token) => CUT_OR_PART.test(token) || food.test(token));
+}
+
 function pieceVolumeMl(ingredientName: string, unitKey: string): number {
   const name = ingredientName.toLowerCase();
-  if (
-    (unitKey === "whole" || /\bwhole\b/.test(unitKey)) &&
-    /\b(chicken|turkey|duck)\b/.test(name)
-  ) {
+  if (isWholeBird(name, unitKey)) {
     return WHOLE_BIRD_ML;
   }
   for (const rule of PIECE_RULES) {
-    if (rule.match.test(name)) return rule.ml;
+    if (pieceRuleApplies(name, rule.match)) return rule.ml;
   }
   return ML.piece ?? 15;
+}
+
+function isWholeBird(name: string, unitKey: string): boolean {
+  const whole =
+    unitKey === "whole" ||
+    /\bwhole\b/.test(unitKey) ||
+    /\bwhole\b/.test(name);
+  if (!whole) return false;
+  const match = name.match(/\b(chicken|turkey|duck)\b/);
+  if (!match) return false;
+  return remainderAfterMatch(name, match) === "";
 }
 
 function isCountLikeUnit(unitKey: string): boolean {
@@ -137,6 +163,16 @@ function isSeasoningGuessCandidate(name: string): boolean {
 /** Missing / to taste / as needed — not pinch/dash or measured units. */
 export function isSeasoningGuessQuantity(item: RawQuantity): boolean {
   return classifyRaw(item).kind === "seasoning-guess";
+}
+
+/** Any omitted / to-taste amount, including sauces and bulk foods. */
+export function isAmbiguousRawQuantity(item: RawQuantity): boolean {
+  if (classifyRaw(item).kind === "seasoning-guess") return true;
+  const hasAmount =
+    item.amount != null && !Number.isNaN(item.amount) && item.amount > 0;
+  const unitKey = item.unit?.trim() ? normalizeUnit(item.unit) : "";
+  if (isVagueUnit(unitKey)) return false;
+  return !hasAmount && !unitKey;
 }
 
 /** Culinary “to taste” share of bulk dish volume. */

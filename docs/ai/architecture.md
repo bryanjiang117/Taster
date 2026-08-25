@@ -20,10 +20,10 @@ input
         fetch page HTML in parallel (capture HTML title before body extract) → parse JSON if the page text is trusted (JSON-LD or long body); URL Context only after a 2xx fetch when HTML is too thin
         accept recipe only if live URL / HTML title match the dish (extract title vetoes other dishes only)
         rewrite each ingredient to a cuisine-typical singular grocery name (English or well-known romanization; ambiguous generics like Chinese sausage ≠ plain sausage)
+        if any in-line omitted amount / to taste: Gemini estimateMissingAmounts fills those amounts from the other recipes (or dish + cuisine + that recipe’s other ingredients when every source omitted it)
         each extract tags role in|out and prep mix knobs; only `in` scores
         each unique name: ingredient cache → chemistry leaf → Gemini estimate if labs miss that exact name → nested full recipe search (same search stack)
         attributeRecipeTaste / combineRecipeTaste (loudness, linear or p=4, gain 1.75×) → cap at strongest in-ingredient; scoreContributions per dimension
-        if primary seasoners had ambiguous amounts (to taste / …): Gemini adjustAmbiguousSeasoning may raise those dims; flagged ingredients take uplift
         nested mixes persist as ingredients, not dishes
         top-level dish: upsert Turso `dishes` (running mean unless Euclidean outlier > 4; timesTasted always += 1)
         successful profile: stats.taste_count += 1 (global, all users)
@@ -31,7 +31,7 @@ input
 
 Dish mix: recipe-relative loudness (smooth blend from `score × (score/peak)^⅓` to full as ratio→1), then **per-ingredient** blend of linear `share×loud` and punch `loud×share^(1/p)` (p=4; share weight loudness ~4→7 and midpoint ≈1.5%, times intensity smoothstep ~5.25→10). Dimension crowding does not change an ingredient’s punch term. **Table salt leaf ≈ 12** (above the usual 0–10 mouthful scale) so a spoon still seasons after the gentler punch. Linear gain (1.75×). Dish display clamps to 0–10. All six dimensions use the same path. Stats use each ingredient's peak taste for the volume-weighted average. Result `scoreContributions` lists every positive ingredient point share per dimension (recomputed from representative + provenance on cache hits; rounded to 2 decimals with a 0.01 floor).
 
-Hard cases (ambiguous origin, fermented/compound ingredients, leaf calibration, ambiguous primary-seasoner dish adjustment) retry on `gemini-3.6-flash`. Model IDs live in `lib/engine/models.ts` (`FAST_MODEL` / `SMART_MODEL`).
+Hard cases (ambiguous origin, fermented/compound ingredients, leaf calibration, missing recipe amounts) retry on `gemini-3.6-flash`. Model IDs live in `lib/engine/models.ts` (`FAST_MODEL` / `SMART_MODEL`).
 
 ## Boundaries
 

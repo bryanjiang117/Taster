@@ -10,8 +10,7 @@ import type { SearchHit } from "./search";
 import type { DishOrigin, Recipe, TasteDimension, TasteProfile } from "./types";
 import { TASTE_DIMENSIONS } from "./types";
 import type { SourcePicks, SourceShortlist } from "./identity";
-import type { ScoreContributions } from "./combine";
-import type { AmbiguousSeasoningAdjustment } from "./ambiguous-seasoning";
+import type { MissingAmountEstimate } from "./fill-amounts";
 import type { IngredientStore } from "./store";
 
 export type IdentifyDishOptions = {
@@ -80,27 +79,19 @@ export interface LlmClient {
     catalogAnchors?: LeafCatalogAnchor[],
   ): Promise<TasteProfile | undefined>;
   /**
-   * After mix: set dish totals for dimensions driven by ambiguous primary
-   * seasoners (to taste / as needed / missing amount), and allocate uplift
-   * to those ingredients' contribution tips.
+   * After extract: fill missing / to-taste amounts using the other recipes
+   * (or dish + cuisine + the rest of that recipe when every source omitted it).
    */
-  adjustAmbiguousSeasoning?(
-    input: AmbiguousSeasoningAdjustRequest,
-  ): Promise<AmbiguousSeasoningAdjustment | undefined>;
+  estimateMissingAmounts?(
+    input: MissingAmountRequest,
+  ): Promise<MissingAmountEstimate[] | undefined>;
   /** Unused by the pipeline. Allowed on test stubs. */
   lookupIngredient?(name: string): Promise<unknown>;
 }
 
-export type AmbiguousSeasoningAdjustRequest = {
+export type MissingAmountRequest = {
   context: CulinaryContext;
-  engineTaste: TasteProfile;
-  contributions: ScoreContributions;
-  flagged: Array<{
-    name: string;
-    dimension: TasteDimension;
-    leafScore: number;
-    currentPoints: number;
-  }>;
+  recipes: Recipe[];
 };
 
 export function classifyTasteInputPrompt(query: string): string {
@@ -199,7 +190,7 @@ export function recipeExtractPrompt(
   return `Extract a cooking recipe from this page text. If it is not a recipe, return {"ingredients":[]}.
 ${culinaryContextLine(context)}
 ${preferTargetDishLine(context)}
-Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, dash, piece). Prefer g or lb for meat and other large solids; use piece only for countable foods (onion, chicken piece), never for salt/pepper/spices. Keep vague kitchen wording as pinch/dash (a pinch of salt → amount 1 unit pinch — not tbsp, not piece, not 15 ml). For "to taste" / "season with" / missing amount on a seasoning, omit amount and unit so code can size it from the dish — or give a measured guess that fits THIS recipe size. If a quantity is missing on a bulk food, still include the ingredient with name only.
+Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, dash, piece). Prefer g or lb for meat and other large solids; use piece only for countable foods (onion, chicken piece), never for salt/pepper/spices. Keep vague kitchen wording as pinch/dash (a pinch of salt → amount 1 unit pinch — not tbsp, not piece, not 15 ml). For "to taste" / "season with" / missing amount, omit amount and unit — do not guess a tablespoon or cup at extract time. If a quantity is missing on a bulk food, still include the ingredient with name only.
 Write each ingredient as exactly one singular English grocery food. Never list two foods in one ingredient.
 For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.
@@ -218,7 +209,7 @@ export function recipeExtractFromUrlPrompt(
   return `Read this recipe URL and extract the recipe. If it is not a recipe, return {"ingredients":[]}.
 ${culinaryContextLine(context)}
 ${preferTargetDishLine(context)}
-Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, dash, piece). Prefer g or lb for meat and other large solids; use piece only for countable foods (onion, chicken piece), never for salt/pepper/spices. Keep vague kitchen wording as pinch/dash (a pinch of salt → amount 1 unit pinch — not tbsp, not piece, not 15 ml). For "to taste" / "season with" / missing amount on a seasoning, omit amount and unit so code can size it from the dish — or give a measured guess that fits THIS recipe size. If a quantity is missing on a bulk food, still include the ingredient with name only.
+Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, dash, piece). Prefer g or lb for meat and other large solids; use piece only for countable foods (onion, chicken piece), never for salt/pepper/spices. Keep vague kitchen wording as pinch/dash (a pinch of salt → amount 1 unit pinch — not tbsp, not piece, not 15 ml). For "to taste" / "season with" / missing amount, omit amount and unit — do not guess a tablespoon or cup at extract time. If a quantity is missing on a bulk food, still include the ingredient with name only.
 Write each ingredient as exactly one singular English grocery food (soy sauce, tofu, green papaya). Never list two foods in one ingredient.
 For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.
@@ -342,23 +333,49 @@ INGREDIENT: ${JSON.stringify(name)}`;
 }
 
 export const SYSTEM =
-  "You extract structured culinary data as JSON. Never invent a dish's final taste scores, except when asked to adjust dimensions flagged from ambiguous primary-seasoner amounts (to taste / as needed / missing). Search native-language recipes for authentic versions, or the user's typed language for internationalized versions, as the task specifies. Leaf ingredient scores start from measured compounds; you may calibrate perception, and may estimate a grocery mouthful only when no lab source matched that exact name.";
+  "You extract structured culinary data as JSON. Never invent a dish's final taste scores. When asked to fill missing recipe amounts, estimate those amounts only — do not output a dish taste vector. Search native-language recipes for authentic versions, or the user's typed language for internationalized versions, as the task specifies. Leaf ingredient scores start from measured compounds; you may calibrate perception, and may estimate a grocery mouthful only when no lab source matched that exact name.";
 
-export function adjustAmbiguousSeasoningPrompt(
-  input: AmbiguousSeasoningAdjustRequest,
-): string {
-  const contextLine = culinaryContextLine(input.context);
-  return `Adjust ONLY the flagged dish taste dimensions. Recipes listed these primary seasoners with ambiguous amounts (to taste / as needed / missing), so the engine's volume guess under- or over-states how seasoned THIS dish should taste.
-${contextLine}
-ENGINE TASTE (0-10, do not change unflagged dimensions): ${JSON.stringify(input.engineTaste)}
-CURRENT CONTRIBUTORS (points toward each dimension): ${JSON.stringify(input.contributions)}
-FLAGGED SEASONERS (only these may receive uplift): ${JSON.stringify(input.flagged)}
+export function estimateMissingAmountsPrompt(input: MissingAmountRequest): string {
+  const native = input.context.nativeName
+    ? ` (native: ${input.context.nativeName})`
+    : "";
+  const cuisine = [input.context.culture, input.context.country]
+    .filter(Boolean)
+    .join(", ");
+  const language = input.context.language
+    ? ` Language: ${input.context.language}.`
+    : "";
+  const recipes = input.recipes
+    .map((recipe, index) => formatRecipeAmounts(recipe, index))
+    .join("\n");
+  return `Fill in missing ingredient amounts. Do not change lines that already have a measured amount.
+DISH: ${input.context.dish}${native}.${cuisine ? ` Cuisine: ${cuisine}.` : ""}${language}
 
-For each flagged dimension:
-- Set target to how strong that taste should be for THIS dish as typically eaten (cuisine + form). Anchors: 0 = none, 5 = clearly present, 8 = bold, 10 = extreme.
-- target must be >= the engine score for that dimension (you are adding seasoning, not removing it).
-- Allocate contributions[] points across the flagged ingredients for that dimension. Those points are the uplift from the engine total to target; they must sum to (target - engine). Check that the uplift size is plausible for those seasoners given their leaf scores and what other ingredients already contribute — do not dump a huge salty jump on a pinch-scale salt line if soy/fish sauce already carry the dish, and do not leave a characteristically seasoned dish near the engine under-estimate when salt/sugar/acid/chili/MSG was "to taste".
-Return adjustments only for flagged dimensions. Omit everything else.`;
+For each UNKNOWN line, return amount + kitchen unit (tsp, tbsp, cup, ml, g, piece, pinch) that fits THAT recipe.
+- If other recipes measured this same ingredient, match their typical amount, scaled to this recipe's size (more bulk → a bit more seasoning, not 4× or 10×).
+- If NO recipe measured it (every line for that ingredient is UNKNOWN), estimate from this dish, its cuisine, and the other ingredients already listed in that recipe (bowl size, what it is mixed with). A Thai yum / som tam dressing is spoons of fish sauce, not cups. Salt to taste is a pinch to a teaspoon for a home portion, not a handful. Do not invent a bulk-food size for a condiment, or a condiment size for rice/meat/vegetable.
+- Only return UNKNOWN in-dish lines. One estimate per unknown ingredient per recipeIndex.
+
+RECIPES:
+${recipes}`;
+}
+
+function formatRecipeAmounts(recipe: Recipe, index: number): string {
+  const title = recipe.title || recipe.url || `recipe ${index}`;
+  const lines = recipe.ingredients
+    .filter((item) => item.role !== "out")
+    .map((item) => {
+      const qty = item.quantityAmbiguous
+        ? "UNKNOWN"
+        : item.amount != null && item.unit
+          ? `${item.amount} ${item.unit}`
+          : item.volumeMl
+            ? `${item.volumeMl} ml`
+            : "UNKNOWN";
+      return `  - ${item.name}: ${qty}`;
+    })
+    .join("\n");
+  return `[${index}] ${title}\n${lines}`;
 }
 
 export function geminiJsonRequest(
@@ -569,36 +586,24 @@ const ESTIMATE_SCHEMA = {
   required: ["taste"],
 };
 
-const ADJUST_AMBIGUOUS_SCHEMA = {
+const MISSING_AMOUNTS_SCHEMA = {
   type: "object",
   properties: {
-    adjustments: {
+    estimates: {
       type: "array",
       items: {
         type: "object",
         properties: {
-          dimension: {
-            type: "string",
-            enum: ["sweet", "sour", "salty", "spicy", "umami", "bitter"],
-          },
-          target: { type: "number" },
-          contributions: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                ingredient: { type: "string" },
-                points: { type: "number" },
-              },
-              required: ["ingredient", "points"],
-            },
-          },
+          recipeIndex: { type: "number" },
+          ingredient: { type: "string" },
+          amount: { type: "number" },
+          unit: { type: "string" },
         },
-        required: ["dimension", "target", "contributions"],
+        required: ["recipeIndex", "ingredient", "amount", "unit"],
       },
     },
   },
-  required: ["adjustments"],
+  required: ["estimates"],
 };
 
 export class GeminiLlm implements LlmClient {
@@ -770,16 +775,15 @@ Query: ${query}`,
     return data.taste;
   }
 
-  async adjustAmbiguousSeasoning(
-    input: AmbiguousSeasoningAdjustRequest,
-  ): Promise<AmbiguousSeasoningAdjustment | undefined> {
-    if (!input.flagged.length) return undefined;
-    const data = await this.json<AmbiguousSeasoningAdjustment>(
+  async estimateMissingAmounts(
+    input: MissingAmountRequest,
+  ): Promise<MissingAmountEstimate[] | undefined> {
+    const data = await this.json<{ estimates?: MissingAmountEstimate[] }>(
       SMART_MODEL,
-      adjustAmbiguousSeasoningPrompt(input),
-      ADJUST_AMBIGUOUS_SCHEMA,
+      estimateMissingAmountsPrompt(input),
+      MISSING_AMOUNTS_SCHEMA,
     );
-    return data;
+    return data.estimates;
   }
 
   private async json<T>(

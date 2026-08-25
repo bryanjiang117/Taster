@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  applyAmbiguousSeasoningAdjustment,
-  primarySeasonerDimension,
-  type AmbiguousSeasoningAdjustment,
-} from "./ambiguous-seasoning";
+import { primarySeasonerDimension } from "./ambiguous-seasoning";
 import { recipeFromExtractJson } from "./llm-parse";
 import { buildRepresentativeRecipe } from "./representative";
-import { emptyTaste } from "./taste";
-import type { ScoreContributions } from "./combine";
 
 describe("primarySeasonerDimension", () => {
   it("maps salt, sugar, lemon, chili, msg to their dims", () => {
@@ -81,7 +75,7 @@ describe("quantityAmbiguous flag at extract", () => {
     expect(tbsp?.ingredients.find((i) => i.name === "salt")?.quantityAmbiguous).toBeFalsy();
   });
 
-  it("does not flag black pepper to taste (not a primary seasoner)", () => {
+  it("flags black pepper to taste like any omitted amount", () => {
     const recipe = recipeFromExtractJson(
       {
         ingredients: [
@@ -93,7 +87,7 @@ describe("quantityAmbiguous flag at extract", () => {
     );
     expect(
       recipe?.ingredients.find((i) => i.name === "black pepper")?.quantityAmbiguous,
-    ).toBeFalsy();
+    ).toBe(true);
   });
 
   it("ORs the flag onto the representative ingredient", () => {
@@ -119,129 +113,5 @@ describe("quantityAmbiguous flag at extract", () => {
     ];
     const { ingredients } = buildRepresentativeRecipe(recipes, 1000);
     expect(ingredients.find((i) => i.name === "salt")?.quantityAmbiguous).toBe(true);
-  });
-});
-
-describe("applyAmbiguousSeasoningAdjustment", () => {
-  const emptyContrib = (): ScoreContributions => ({
-    sweet: [],
-    sour: [],
-    salty: [],
-    spicy: [],
-    umami: [],
-    bitter: [],
-  });
-
-  it("raises a flagged dim and adds uplift to the seasoner's contribution", () => {
-    const taste = { ...emptyTaste(), salty: 2.5 };
-    const contributions = emptyContrib();
-    contributions.salty = [
-      { name: "soy sauce", points: 2.0 },
-      { name: "salt", points: 0.5 },
-    ];
-    const adjustment: AmbiguousSeasoningAdjustment = {
-      adjustments: [
-        {
-          dimension: "salty",
-          target: 5,
-          contributions: [{ ingredient: "salt", points: 2.5 }],
-        },
-      ],
-    };
-    const result = applyAmbiguousSeasoningAdjustment({
-      taste,
-      contributions,
-      flagged: [{ name: "salt", dimension: "salty" }],
-      adjustment,
-    });
-    expect(result.taste.salty).toBe(5);
-    expect(result.contributions.salty.find((r) => r.name === "salt")?.points).toBe(3);
-    expect(result.contributions.salty.find((r) => r.name === "soy sauce")?.points).toBe(2);
-  });
-
-  it("never lowers below the engine score", () => {
-    const taste = { ...emptyTaste(), salty: 4 };
-    const contributions = emptyContrib();
-    contributions.salty = [{ name: "salt", points: 4 }];
-    const result = applyAmbiguousSeasoningAdjustment({
-      taste,
-      contributions,
-      flagged: [{ name: "salt", dimension: "salty" }],
-      adjustment: {
-        adjustments: [
-          {
-            dimension: "salty",
-            target: 2,
-            contributions: [{ ingredient: "salt", points: 0 }],
-          },
-        ],
-      },
-    });
-    expect(result.taste.salty).toBe(4);
-    expect(result.contributions.salty[0]?.points).toBe(4);
-  });
-
-  it("splits uplift across multiple flagged seasoners on one dim", () => {
-    const taste = { ...emptyTaste(), sour: 3 };
-    const contributions = emptyContrib();
-    contributions.sour = [
-      { name: "tomato", points: 2 },
-      { name: "lemon juice", points: 0.5 },
-      { name: "vinegar", points: 0.5 },
-    ];
-    const result = applyAmbiguousSeasoningAdjustment({
-      taste,
-      contributions,
-      flagged: [
-        { name: "lemon juice", dimension: "sour" },
-        { name: "vinegar", dimension: "sour" },
-      ],
-      adjustment: {
-        adjustments: [
-          {
-            dimension: "sour",
-            target: 6,
-            contributions: [
-              { ingredient: "lemon juice", points: 2 },
-              { ingredient: "vinegar", points: 1 },
-            ],
-          },
-        ],
-      },
-    });
-    expect(result.taste.sour).toBe(6);
-    expect(result.contributions.sour.find((r) => r.name === "lemon juice")?.points).toBe(
-      2.5,
-    );
-    expect(result.contributions.sour.find((r) => r.name === "vinegar")?.points).toBe(1.5);
-    expect(result.contributions.sour.find((r) => r.name === "tomato")?.points).toBe(2);
-  });
-
-  it("ignores unflagged dimensions from the model", () => {
-    const taste = { ...emptyTaste(), salty: 2, sweet: 1 };
-    const contributions = emptyContrib();
-    contributions.salty = [{ name: "salt", points: 2 }];
-    contributions.sweet = [{ name: "onion", points: 1 }];
-    const result = applyAmbiguousSeasoningAdjustment({
-      taste,
-      contributions,
-      flagged: [{ name: "salt", dimension: "salty" }],
-      adjustment: {
-        adjustments: [
-          {
-            dimension: "salty",
-            target: 4,
-            contributions: [{ ingredient: "salt", points: 2 }],
-          },
-          {
-            dimension: "sweet",
-            target: 8,
-            contributions: [{ ingredient: "onion", points: 7 }],
-          },
-        ],
-      },
-    });
-    expect(result.taste.salty).toBe(4);
-    expect(result.taste.sweet).toBe(1);
   });
 });

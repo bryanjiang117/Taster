@@ -23,6 +23,28 @@ describe("quantity conversion", () => {
     expect(quantityToMl(1, "leg quarter", "chicken")).toBeGreaterThan(150);
     expect(quantityToMl(1, "whole", "chicken")).toBeGreaterThan(1000);
   });
+
+  it("does not apply whole-food piece sizes to a different grocery that contains that word", () => {
+    expect(quantityToMl(1, "piece", "fish")).toBe(120);
+    expect(quantityToMl(1, "piece", "lime")).toBe(120);
+    expect(quantityToMl(1, "piece", "chicken")).toBe(250);
+    expect(quantityToMl(1, "piece", "onion")).toBe(120);
+
+    expect(quantityToMl(1, "piece", "fish sauce")).toBe(15);
+    expect(quantityToMl(1, "piece", "shrimp paste")).toBe(15);
+    expect(quantityToMl(1, "piece", "fish ball")).toBe(15);
+    expect(quantityToMl(1, "piece", "kaffir lime leaf")).toBe(15);
+    expect(quantityToMl(5, "piece", "kaffir lime leaf")).toBe(75);
+    expect(quantityToMl(1, "piece", "lemon zest")).toBe(15);
+    expect(quantityToMl(1, "piece", "chicken stock")).toBe(15);
+    expect(quantityToMl(1, "piece", "onion powder")).toBe(15);
+
+    expect(quantityToMl(1, "piece", "chicken breast")).toBe(250);
+    expect(quantityToMl(1, "piece", "salmon fillet")).toBe(120);
+    expect(quantityToMl(1, "piece", "pork chop")).toBe(200);
+    expect(quantityToMl(1, "piece", "green onion")).toBe(20);
+    expect(quantityToMl(1, "piece", "chili pepper")).toBe(15);
+  });
 });
 
 describe("dish-aware vague amounts", () => {
@@ -56,6 +78,61 @@ describe("dish-aware vague amounts", () => {
     const salt = recipe?.ingredients.find((i) => i.name === "salt");
     expect(salt?.volumeMl).toBeLessThan(8);
     expect(salt?.volumeMl).toBeGreaterThan(0.2);
+  });
+
+  it("does not treat 5 kaffir lime leaves as 5 limes", () => {
+    const recipe = recipeFromExtractJson(
+      {
+        ingredients: [
+          { name: "rice", amount: 400, unit: "g" },
+          { name: "kaffir lime leaf", amount: 5, unit: "piece" },
+        ],
+      },
+      "https://example.com/curry",
+    );
+    const leaf = recipe?.ingredients.find((i) => i.name === "kaffir lime leaf");
+    expect(leaf?.volumeMl).toBe(75);
+  });
+
+  it("does not treat missing fish sauce as a 120 ml fish fillet", () => {
+    const recipe = recipeFromExtractJson(
+      {
+        ingredients: [
+          { name: "rice", amount: 400, unit: "g" },
+          { name: "lime juice", amount: 1, unit: "tbsp" },
+          { name: "fish sauce" },
+        ],
+      },
+      "https://example.com/yam",
+    );
+    const fish = recipe?.ingredients.find((i) => i.name === "fish sauce");
+    expect(fish?.volumeMl).toBeLessThan(30);
+    expect(fish?.volumeMl).toBeGreaterThan(5);
+  });
+
+  it("does not average omitted fish sauce with real tablespoons into ~68 ml", () => {
+    const specified = {
+      ingredients: [
+        { name: "rice", amount: 400, unit: "g" },
+        { name: "fish sauce", amount: 1, unit: "tbsp" },
+      ],
+    };
+    const omitted = {
+      ingredients: [
+        { name: "rice", amount: 400, unit: "g" },
+        { name: "fish sauce" },
+      ],
+    };
+    const recipes = [
+      recipeFromExtractJson(specified, "https://example.com/a")!,
+      recipeFromExtractJson(specified, "https://example.com/b")!,
+      recipeFromExtractJson(omitted, "https://example.com/c")!,
+      recipeFromExtractJson(omitted, "https://example.com/d")!,
+    ];
+    const { ingredients } = buildRepresentativeRecipe(recipes, 430);
+    const fish = ingredients.find((i) => i.name === "fish sauce");
+    expect(fish?.volumeMl).toBeLessThan(25);
+    expect(fish?.volumeMl).toBeGreaterThan(10);
   });
 
   it("rejects piece on seasoning names (LLM stand-in for pinch/to taste)", () => {

@@ -12,12 +12,13 @@ Mix is recipe-relative loudness, then a **per-ingredient** blend of **linear `sh
 
 `pipeline.ts` does:
 
-1. Resolve each in-ingredient (cache → chemistry leaf → Gemini estimate if labs miss that exact name → nested recipe)
-2. `attributeRecipeTaste` / `combineRecipeTaste` → intensity/scale, recipe-relative loudness, per-ingredient linear/punch blend (p=4, intensity ~5.25→10), linear gain (1.75×), plus per-dimension ingredient contribution points
-3. `applySolubleRetention` if cooking liquid was discarded
-4. Cap is inside combine: no dimension exceeds the strongest in-ingredient; dish display clamps to 0–10
-5. If any representative `in` primary seasoner is `quantityAmbiguous` (missing / to taste / as needed / season with — salt, sugar/honey, lemon/lime/vinegar, chili, MSG), Gemini `adjustAmbiguousSeasoning` may raise those dish dimensions (never below engine). Flagged seasoners take the contribution uplift (Gemini allocates when several share a dim). Other dims untouched.
-6. `roundTaste`, and align/round contribution points to that vector (UI lists every positive contributor at 2 decimals with a 0.01 floor so tiny shares still show; tips show 5 then “Show more”)
+1. Collect recipes, canonicalize names
+2. If any in-ingredient amount is missing / to taste / as needed, Gemini `estimateMissingAmounts` fills those lines (sibling recipes when some measured it; dish + cuisine + the rest of that recipe when every source omitted it). Code converts to ml; sibling-measured amounts clamp wild guesses
+3. Prep-mix heuristics, then resolve each in-ingredient (cache → chemistry leaf → Gemini estimate if labs miss that exact name → nested recipe)
+4. `attributeRecipeTaste` / `combineRecipeTaste` → intensity/scale, recipe-relative loudness, per-ingredient linear/punch blend (p=4, intensity ~5.25→10), linear gain (1.75×), plus per-dimension ingredient contribution points
+5. `applySolubleRetention` if cooking liquid was discarded
+6. Cap is inside combine: no dimension exceeds the strongest in-ingredient; dish display clamps to 0–10
+7. `roundTaste`, and align/round contribution points to that vector (UI lists every positive contributor at 2 decimals with a 0.01 floor so tiny shares still show; tips show 5 then “Show more”)
 
 Bland dishes stay low when their notes are traces vs the recipe peak. Salt seasons via a leaf ≈12; other high seasonings punch through more gently. Pure ingredient queries skip mix and return the catalog vector (contribution tip is that one ingredient at the full score).
 
@@ -59,12 +60,12 @@ A page matches when it is a recipe for the dish. **Accept** only on page-grounde
 Aim for 3 on-topic recipes, then up to 7 if they disagree. Search Gemini and DuckDuckGo in parallel and stop once there are enough untried titled hits for the remaining recipe slots. Fetch page HTML first and parse it only when the text is substantial or includes JSON-LD. Store the post-redirect page URL on the recipe. A captcha/human-check redirect still counts as a live 2xx, but do not parse that HTML or store that URL — recover the recipe path from `next=` (or the original search hit) and give that URL to URL Context. URL-context is only used when the live fetch returned 2xx but the HTML was too thin (JS shell). A 4xx/5xx or failed fetch drops that URL. After the first three recipes, keep searching if flavors disagree and more titled pages are needed. Collection stops at `COLLECT_TIME_LIMIT_MS` (45s) and scores whatever recipes were extracted, even if fewer than 3. Only fail if zero usable recipes. Search uses `expandSearchQueries`. Always merge Gemini + DuckDuckGo hits.
 
 - Quantity = mean(volume / recipe_volume across all recipes, 0 if absent) × target final volume.
-- Extract amounts convert via `resolveRecipeVolumes` in `quantity.ts` (two-pass): measured/count units first; vague units (`pinch`, `dash`, …) use a kitchen baseline scaled by bulk recipe volume (~0.5×–3× vs a 500 ml reference); missing / “to taste” / `piece` on seasoning names (salt, ground pepper, dried spices) estimate from dish size — never the flat 15 ml `piece` default. Fresh chili peppers stay countable. Primary seasoners with clearly ambiguous amounts also set `quantityAmbiguous` for the post-mix Gemini adjustment.
+- Extract amounts convert via `resolveRecipeVolumes` in `quantity.ts` (two-pass): measured/count units first; vague units (`pinch`, `dash`, …) use a kitchen baseline scaled by bulk recipe volume (~0.5×–3× vs a 500 ml reference); missing / “to taste” / `piece` on seasoning names (salt, ground pepper, dried spices) estimate from dish size — never the flat 15 ml `piece` default. Whole-food piece sizes (`fish` fillet, `lime` fruit, `chicken`) apply only when that food is what is being counted (or a cut of it: breast, fillet, chop). A different grocery that merely contains the word (`fish sauce`, `kaffir lime leaf`, `chicken stock`, `lemon zest`, `fish ball`) does not inherit that size — it falls back to the 15 ml piece default. Fresh chili peppers stay countable. Any omitted / to-taste amount sets `quantityAmbiguous`; after all recipes are in, Gemini `estimateMissingAmounts` fills those lines from sibling recipes or (when none measured it) dish, cuisine, and the other ingredients in that recipe.
 
 ## LLM jobs (only)
 
 Gemini 3.5 Flash-Lite by default: classify input (dish / ingredient / reject), origin (bare dish names resolve to the popular form people usually mean; specific style/region qualifiers are honored), native-language or typed-language search, URL-context recipe parse, ingredient name canonicalize, common-pantry check, cached-dish matching, leaf calibration, grocery-leaf estimate when labs miss.
 
-Gemini 3.6 Flash for hard cases: weak origin, sauces/pastes/fermented compounds, leaf calibration on those names, and post-mix ambiguous primary-seasoner adjustment (`adjustAmbiguousSeasoning`).
+Gemini 3.6 Flash for hard cases: weak origin, sauces/pastes/fermented compounds, leaf calibration on those names, and missing-amount fill (`estimateMissingAmounts`).
 
-Never ask either model for the full dish taste vector except that flagged-dimension adjustment. System prompt in `GeminiLlm` forbids inventing unflagged dish scores. Cached dish numbers come from the Turso running mean, not the matcher. Pure ingredient queries skip dilution and return the ingredient catalog vector (chemistry, Gemini estimate, or nested recipe on miss).
+Never ask either model for the full dish taste vector. System prompt in `GeminiLlm` forbids inventing dish scores. Cached dish numbers come from the Turso running mean, not the matcher. Pure ingredient queries skip dilution and return the ingredient catalog vector (chemistry, Gemini estimate, or nested recipe on miss).
