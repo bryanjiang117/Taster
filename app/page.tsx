@@ -75,6 +75,7 @@ export default function HomePage() {
 
   useEffect(() => {
     function focusDish() {
+      if (loadingRef.current || abortRef.current) return;
       dishInputRef.current?.focus();
     }
 
@@ -142,6 +143,7 @@ export default function HomePage() {
     abortRef.current = null;
     abort?.abort();
     setLoading(false);
+    dishInputRef.current?.focus();
   }
 
   function onSubmit(event: FormEvent) {
@@ -155,9 +157,9 @@ export default function HomePage() {
 
   async function startTaste() {
     if (abortRef.current) return;
-    dishInputRef.current?.blur();
     const abort = new AbortController();
     abortRef.current = abort;
+    dishInputRef.current?.blur();
     const started = Date.now();
     setError(null);
     setResult(null);
