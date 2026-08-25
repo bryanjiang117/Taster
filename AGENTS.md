@@ -31,6 +31,7 @@ Restart the dev server after changing `.env`. Never commit `.env`. The live cata
 - Search in the dish’s origin language for the form `identifyDish` resolved (popular when the query is bare; exact when a style/region is named). **Typed language** mode searches in whatever language the user typed (internationalized). Both write to the same dish cache row.
 - Shared dish cache in Turso `dishes`: LLM match → reuse stored average when that setting is on; otherwise run the pipeline and fold into the running mean unless the 6-D Euclidean distance is > 4. Cache hits still increment `timesTasted`. Nested recipe tastes do not read or write `dishes`.
 - Global taste count in Turso `stats` (`taste_count`): +1 on every successful profile the user gets back (dish, ingredient, cache hit). Rejects, errors, and Stop do not count. Shown at the top as **Total tastings**; ticks up when `done` arrives.
+- Production only (`VERCEL_ENV=production`): each visitor may start 5 tastes per minute, 15 per hour, and 25 per day (fixed clock buckets, counted when `POST /api/profile` is about to run). Over the limit returns 429 before Gemini. Local and preview are unlimited. Empty dish names are not counted.
 - When changing scoring math, update tests in `lib/engine/*.test.ts` first.
 - Keep the UI to: dish name in, profile out, plus the two mode toggles and Stop while tasting. Do not add extra screens unless asked.
 
@@ -46,6 +47,7 @@ Restart the dev server after changing `.env`. Never commit `.env`. The live cata
 - `lib/engine/catalog.ts` — Turso ingredient load/persist
 - `lib/engine/dish-catalog.ts` — Turso dish cache
 - `lib/engine/stats.ts` — Turso global taste count
+- `lib/engine/rate-limit.ts` — Turso per-visitor start limits (prod only)
 - `lib/engine/testdata/ingredients.json` — offline snapshot for unit tests only
 - `lib/engine/testdata/foodb-taste.json` — FooDB 2020 public dump, taste compounds only
 - `lib/engine/testdata/fct-taste.json` / `umami-taste.json` / `phenol-taste.json` / `duke-taste.json` — derived taste extracts (FAO/INFOODS + Japan + CIQUAL; UIC umami snapshot; Phenol-Explorer polyphenols; Dr. Duke ppm). Rebuild with `scripts/extract-*-taste.py`; do not commit raw Excel.

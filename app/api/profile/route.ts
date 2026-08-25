@@ -4,6 +4,7 @@ import { profileDish } from "@/lib/engine/pipeline";
 import type { ProgressEvent } from "@/lib/engine/progress";
 import { loadProductionStore, persistProductionLearned } from "@/lib/engine/catalog";
 import { loadProductionDishStore, persistProductionDish } from "@/lib/engine/dish-catalog";
+import { tryStartProductionTaste } from "@/lib/engine/rate-limit";
 import { incrementProductionTasteCount } from "@/lib/engine/stats";
 import { DuckDuckGoSearch, FetchPageClient, searchWithFallback } from "@/lib/engine/search";
 import { UsdaFdcClient } from "@/lib/engine/usda";
@@ -23,6 +24,11 @@ export async function POST(request: Request) {
   const dish = body.dish?.trim();
   if (!dish) {
     return Response.json({ error: "Enter a dish name." }, { status: 400 });
+  }
+
+  const limit = await tryStartProductionTaste(request);
+  if (!limit.ok) {
+    return Response.json({ error: limit.error }, { status: 429 });
   }
 
   const encoder = new TextEncoder();
