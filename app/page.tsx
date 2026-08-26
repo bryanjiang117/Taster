@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useDishPlaceholder } from "./use-dish-placeholder";
+import { useTypewriterEllipsis } from "./use-typewriter-ellipsis";
 import { IngredientList } from "./ingredient-list";
 import { ProgressLog } from "./progress-log";
 import { ScoreList } from "./score-list";
@@ -13,8 +14,8 @@ import type { ProgressStepEvent } from "@/lib/engine/progress";
 import { tidyQueryName } from "@/lib/engine/normalize";
 import { readProgressStream } from "@/lib/ui/progress-stream";
 
-const USE_CACHE_KEY = "taster.useCache";
-const TYPED_LANGUAGE_KEY = "taster.typedLanguage";
+const USE_CACHE_KEY = "taster.useCache.v2";
+const TYPED_LANGUAGE_KEY = "taster.typedLanguage.v2";
 
 type ApiResult = {
   dish: string;
@@ -39,6 +40,8 @@ export default function HomePage() {
   const [useCache, setUseCache] = useState(false);
   const [typedLanguage, setTypedLanguage] = useState(false);
   const [totalTastes, setTotalTastes] = useState<number | null>(null);
+  const pendingEllipsis = useTypewriterEllipsis(totalTastes != null);
+  const countPending = !pendingEllipsis.reveal;
   const placeholder = useDishPlaceholder(!dish && !loading);
   const abortRef = useRef<AbortController | null>(null);
   const dishInputRef = useRef<HTMLInputElement | null>(null);
@@ -249,12 +252,18 @@ export default function HomePage() {
 
   return (
     <main>
-      {totalTastes != null ? (
-        <p className="taste-count" aria-live="polite">
-          <span className="taste-count-label">Total tastings:</span>
-          <b>{totalTastes.toLocaleString("en-US")}</b>
-        </p>
-      ) : null}
+      <p
+        className="taste-count"
+        aria-live={countPending ? "off" : "polite"}
+        aria-busy={countPending}
+      >
+        <span className="taste-count-label">Total tastings:</span>
+        <b aria-hidden={countPending || undefined}>
+          {pendingEllipsis.reveal && totalTastes != null
+            ? totalTastes.toLocaleString("en-US")
+            : pendingEllipsis.text || "\u00a0"}
+        </b>
+      </p>
       <h1>Taster</h1>
       <div className="intro-copy">
         <p className="lede">Type a dish. Get a taste profile. The more specific the better.</p>
