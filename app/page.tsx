@@ -257,7 +257,7 @@ export default function HomePage() {
       ) : null}
       <h1>Taster</h1>
       <div className="intro-copy">
-        <p className="lede">Type a dish. Get a taste profile.</p>
+        <p className="lede">Type a dish. Get a taste profile. The more specific the better.</p>
       </div>
 
       <form onSubmit={onSubmit}>
