@@ -1,8 +1,11 @@
 # Taster
 
+Estimate a dish’s taste profile from native-language recipes.
+
 <img width="572" height="805" alt="Screenshot 2026-08-25 at 9 47 44 PM" src="https://github.com/user-attachments/assets/748ceda1-d294-44b9-8d17-923ab58bb67d" />
 
-Estimate a dish’s taste profile from native-language recipes.
+
+## To Run
 
 ```bash
 cp .env.example .env   # GEMINI_API_KEY, TURSO_DATABASE_URL, TURSO_AUTH_TOKEN
