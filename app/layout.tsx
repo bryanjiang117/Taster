@@ -4,16 +4,16 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Taster",
-  description: "Estimate a dish's taste profile from native-language recipes.",
+  description: "Determine a dish's authentic taste profile from native-language recipes.",
   openGraph: {
     title: "Taster",
-    description: "Estimate a dish's taste profile from native-language recipes.",
+    description: "Determine a dish's authentic taste profile from native-language recipes.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Taster",
-    description: "Estimate a dish's taste profile from native-language recipes.",
+    description: "Determine a dish's authentic taste profile from native-language recipes.",
   },
 };
 
