@@ -167,7 +167,8 @@ export function canonicalizeIngredientNamesPrompt(
 ${contextLine}
 Each mapping's "to" must be one singular short English grocery name (or a well-known romanized native name when English is awkward), or a comma-separated list if the extracted line is multiple foods.
 If the source name is culturally ambiguous in this dish's cuisine, emit the cuisine-typical grocery name even when CATALOG only has the dictionary generic (香肠 / sausage in Cantonese clay pot rice → chinese sausage or lap cheong, not sausage; chili in som tam or mapo tofu is the hot pepper, never sweet chili sauce). Prefer an exact cuisine-specific catalog string when it exists; otherwise invent that short singular name. Do not invent a cuisine form when the source is already specific the other way (italian sausage or bratwurst in a Chinese dish stays itself).
-If it is the same food as an item in CATALOG, copy that catalog string exactly (cut, packing, and marketing copy do not make a new food).
+If the source is a product family whose members taste different, it is not specific enough to score. Emit the cuisine-typical grocery this dish uses, even when CATALOG only has the family name. A recipe that already named a different member stays that member.
+If it is the same food as an item in CATALOG at the same specificity, copy that catalog string exactly (cut, packing, and marketing copy do not make a new food). Never copy a catalog hypernym.
 If it is a new food, invent a short singular English grocery name (or romanized native) that preserves heat, fermentation, form, and cuisine (thai chili, chili oil, fermented black bean, chili bean paste, chinese sausage, lap cheong, msg).
 Keep distinct foods distinct (green papaya ≠ papaya, juice ≠ the vegetable, chicken breast ≠ chicken, lime ≠ lemon, chili ≠ sweet chili, chili oil ≠ canola oil, chili bean paste ≠ chili with beans, chinese sausage ≠ sausage).
 Process forms are not the base food — never collapse them into a catalog parent just because the parent is listed (kimchi ≠ cabbage, sauerkraut ≠ cabbage, pickle ≠ cucumber, yogurt ≠ milk, bacon ≠ pork, dried shrimp ≠ shrimp).
@@ -191,7 +192,7 @@ export function recipeExtractPrompt(
 ${culinaryContextLine(context)}
 ${preferTargetDishLine(context)}
 Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, dash, piece). Prefer g or lb for meat and other large solids; use piece only for countable foods (onion, chicken piece), never for salt/pepper/spices. Keep vague kitchen wording as pinch/dash (a pinch of salt → amount 1 unit pinch — not tbsp, not piece, not 15 ml). For "to taste" / "season with" / missing amount, omit amount and unit — do not guess a tablespoon or cup at extract time. If a quantity is missing on a bulk food, still include the ingredient with name only.
-Write each ingredient as exactly one singular English grocery food. Never list two foods in one ingredient.
+Write each ingredient as exactly one singular English grocery food specific enough to score. If swapping another grocery in the same dictionary family would change taste, do not emit the family name — emit the cuisine-typical member this dish uses. A line that already names a different member keeps it. Never list two foods in one ingredient.
 For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.
 - "out" = side, garnish, dip, "for serving", lemon wedges on the side, bread, packaging, or anything not meant to flavor the cooked dish itself.
@@ -210,7 +211,7 @@ export function recipeExtractFromUrlPrompt(
 ${culinaryContextLine(context)}
 ${preferTargetDishLine(context)}
 Convert quantities to numeric amount + unit (tsp, tbsp, cup, ml, g, lb, clove, pinch, dash, piece). Prefer g or lb for meat and other large solids; use piece only for countable foods (onion, chicken piece), never for salt/pepper/spices. Keep vague kitchen wording as pinch/dash (a pinch of salt → amount 1 unit pinch — not tbsp, not piece, not 15 ml). For "to taste" / "season with" / missing amount, omit amount and unit — do not guess a tablespoon or cup at extract time. If a quantity is missing on a bulk food, still include the ingredient with name only.
-Write each ingredient as exactly one singular English grocery food (soy sauce, tofu, green papaya). Never list two foods in one ingredient.
+Write each ingredient as exactly one singular English grocery food specific enough to score (soy sauce, tofu, green papaya). If swapping another grocery in the same dictionary family would change taste, do not emit the family name — emit the cuisine-typical member this dish uses. A line that already names a different member keeps it. Never list two foods in one ingredient.
 For each ingredient set role to "in" or "out":
 - "in" = mixed, cooked, marinated, or otherwise incorporated into the dish as served from the pot/pan/plate.
 - "out" = side, garnish, dip, "for serving", lemon wedges on the side, bread, packaging, or anything not meant to flavor the cooked dish itself.

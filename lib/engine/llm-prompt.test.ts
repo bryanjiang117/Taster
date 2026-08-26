@@ -9,6 +9,7 @@ import {
   identifyDishPrompt,
   isCommonIngredientPrompt,
   leafCatalogAnchors,
+  recipeExtractFromUrlPrompt,
   recipeExtractPrompt,
 } from "./llm";
 import { IngredientStore } from "./store";
@@ -110,6 +111,56 @@ describe("culinary context in LLM name prompts", () => {
       /do not upgrade a generic name to a different product just because the catalog is more specific/,
     );
     expect(prompt.toLowerCase()).toMatch(/italian sausage|bratwurst|already specific/);
+  });
+
+  it("does not copy a catalog family name when members of that family taste different", () => {
+    const prompt = canonicalizeIngredientNamesPrompt(
+      ["paste"],
+      ["paste", "onion"],
+      {
+        dish: "mapo tofu",
+        nativeName: "麻婆豆腐",
+        culture: "Sichuan",
+        country: "China",
+        language: "Chinese",
+      },
+    );
+    expect(prompt.toLowerCase()).toMatch(
+      /members taste different|specific enough to score/,
+    );
+    expect(prompt.toLowerCase()).toMatch(
+      /same specificity|never copy a catalog hypernym|family name/,
+    );
+    expect(prompt.toLowerCase()).toMatch(
+      /already named a different member|stays that member/,
+    );
+    expect(prompt.toLowerCase()).not.toMatch(/japanese curry roux|katsu curry|カレールー/);
+    expect(prompt.toLowerCase()).not.toMatch(
+      /if it is the same food as an item in catalog, copy that catalog string exactly \(cut, packing, and marketing copy do not make a new food\)\./,
+    );
+  });
+
+  it("tells extract not to shorten a taste-divergent family to a dictionary name", () => {
+    const context = {
+      dish: "mapo tofu",
+      nativeName: "麻婆豆腐",
+      culture: "Sichuan",
+      country: "China",
+      language: "Chinese",
+    };
+    for (const prompt of [
+      recipeExtractPrompt("page text", "https://example.com/mapo", context),
+      recipeExtractFromUrlPrompt("https://example.com/mapo", context),
+    ]) {
+      expect(prompt.toLowerCase()).toMatch(/specific enough/);
+      expect(prompt.toLowerCase()).toMatch(
+        /swapping another grocery|dictionary family|members taste different/,
+      );
+      expect(prompt.toLowerCase()).toMatch(
+        /already names a different member|keeps it/,
+      );
+      expect(prompt.toLowerCase()).not.toMatch(/japanese curry roux|katsu curry|カレールー/);
+    }
   });
 
   it("forbids collapsing process forms and dish-namesake foods into parent categories", () => {

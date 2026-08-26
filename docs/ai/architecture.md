@@ -20,7 +20,7 @@ input
         Google Search grounding + HTML search in parallel (stop once 3 titled hits exist)
         fetch page HTML in parallel (capture HTML title before body extract) → parse JSON if the page text is trusted (JSON-LD or long body); URL Context only after a 2xx fetch when HTML is too thin
         accept recipe only if live URL / HTML title match the dish (extract title vetoes other dishes only)
-        rewrite each ingredient to a cuisine-typical singular grocery name (English or well-known romanization; ambiguous generics like Chinese sausage ≠ plain sausage)
+        rewrite each ingredient to a cuisine-typical singular grocery name (English or well-known romanization; ambiguous generics like Chinese sausage ≠ plain sausage; taste-divergent family names become the cuisine-typical member, never a catalog hypernym)
         if any in-line omitted amount / to taste: Gemini estimateMissingAmounts fills those amounts from the other recipes (or dish + cuisine + that recipe’s other ingredients when every source omitted it)
         each extract tags role in|out and prep mix knobs; only `in` scores
         each unique name: ingredient cache → chemistry leaf → Gemini estimate if labs miss that exact name → nested full recipe search (same search stack)
