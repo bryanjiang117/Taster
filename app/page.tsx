@@ -229,6 +229,7 @@ export default function HomePage() {
       if (abortRef.current === abort) {
         abortRef.current = null;
         setLoading(false);
+        dishInputRef.current?.focus({ preventScroll: true });
       }
     }
   }
