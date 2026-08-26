@@ -1,5 +1,7 @@
 # Taster
 
+<img width="572" height="805" alt="Screenshot 2026-08-25 at 9 47 44 PM" src="https://github.com/user-attachments/assets/748ceda1-d294-44b9-8d17-923ab58bb67d" />
+
 Estimate a dish’s taste profile from native-language recipes.
 
 ```bash
